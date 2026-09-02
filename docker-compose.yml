@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mino
+      POSTGRES_PASSWORD: mino
+      POSTGRES_DB: mino
+    ports:
+      - "5432:5432"
+    volumes:
+      - mino_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  mino_postgres_data:

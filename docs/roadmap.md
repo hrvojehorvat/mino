@@ -3,12 +3,16 @@
 Status legend: not started / in progress / done. Update the status line for a phase as it progresses — don't rewrite this file wholesale each time (see `lessons.md` for the end-of-session review process referenced in CLAUDE.md).
 
 ## Phase 0 — Repo scaffolding & tooling
-**Status:** not started
+**Status:** done
 
-- Decide monorepo layout (see `decisions/0001-monorepo-structure.md`).
-- RN app skeleton (see `decisions/0002-expo-vs-bare-rn.md`), NestJS app skeleton.
-- Prisma initialized against a local/dev Postgres (Docker Compose for local dev).
-- CI skeleton: type-check + lint on push. No tests yet (nothing to test).
+- [x] Monorepo layout: npm workspaces (`apps/*`, `packages/*`) — see `decisions/0001-monorepo-structure.md`.
+- [x] `apps/mobile` — Expo (blank-typescript template) — see `decisions/0002-expo-vs-bare-rn.md`. Dev server (Metro) verified booting cleanly; opening in a simulator/device is a manual step.
+- [x] `apps/api` — NestJS skeleton. Verified booting and responding on `GET /`.
+- [x] `packages/shared-types` — initial wire-contract types, builds and type-checks cleanly.
+- [x] `apps/api/prisma/schema.prisma` — datasource + generator only, no models yet (models are Phase 1 scope).
+- [x] `docker-compose.yml` for local Postgres — running, verified accepting connections.
+- [x] Prisma connectivity verified against the running Postgres container (schema validated + a live query executed successfully).
+- CI skeleton: skipped for now per decision with the user (no remote yet).
 - Explicitly out of scope: Azure provisioning, Kafka, ML/LLM scaffolding.
 
 ## Phase 1 — MVP: Finger Tapping end-to-end
