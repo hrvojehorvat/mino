@@ -31,5 +31,16 @@ This keeps verification proportionate to MVP scope: a real integration test wher
 
 **Testing approach:** same as Phase 1 — one backend e2e happy-path case per test type asserting the correct rows land (`RawEvent` sequence or `SensorSession.samples`), plus manual on-device/web checks per screen as it's built. No new automation category needed; Phase 2 extends the same pipeline Phase 1 established rather than introducing a new one.
 
+## Phase 3 — ML pipeline v1
+
+**Definition of done:**
+1. `services/ml`'s poller finds every `Completed` session with no `MLResult` row yet under the current `modelId`/`modelVersion`, computes metrics, and saves exactly one result row per session — verified idempotent (re-running finds nothing new to do).
+2. Each of the six test types has real (non-placeholder) metrics, computed only from that session's own raw data (`RawEvent` rows, `TestSession.testParams`, or `SensorSession.samples` depending on test type) — never compared against a fixed/clinical threshold, only against the session's own data (e.g. Reaction Time's lapse threshold, Guided Movement's response threshold).
+3. Every feature module has unit tests against hand-computed synthetic fixtures (exact expected numbers, not just "did it run"), plus an integration test that inserts real rows into the `mino_test` Postgres database, runs the actual poller, and asserts on the saved `MLResult` row.
+4. Metrics were spot-checked against real captured dev-DB sessions for every test type, not just synthetic fixtures — this is what caught both real bugs below.
+5. Type checks pass across the whole workspace; `uv run pytest` passes for `services/ml`.
+
+**Testing approach:** unit tests carry the actual correctness bar (exact hand-computed numbers), integration tests prove the pipeline wiring end-to-end (DB → poller → saved row), and a final manual pass against real dev-DB data is the gate before calling a step done — synthetic fixtures alone missed real data-quality issues twice this phase (see `lessons.md`).
+
 ## Later phases
-To be filled in as each phase is planned in detail (Phase 3: ML output correctness/regression checks against known synthetic inputs; Phase 4: LLM guardrail eval set against prohibited-language cases).
+To be filled in as each phase is planned in detail (Phase 4: LLM guardrail eval set against prohibited-language cases).

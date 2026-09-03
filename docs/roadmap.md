@@ -36,12 +36,13 @@ Status legend: not started / in progress / done. Update the status line for a ph
 - **Future improvement, not yet scheduled:** Finger Tracing currently shows one fixed reference path per session. Extend it to multiple trials per session (minimum 3, e.g. 5 to match Reaction Time) drawn from a pool of ~10 varied curve shapes, picked randomly per run — avoids users memorizing a single fixed line. Same pattern as Reaction Time's multi-trial change: no schema change needed, widen `testParams.referencePaths` to an array and infer trial boundaries from `touchDown`/`touchUp` pairing in the event stream.
 
 ## Phase 3 — ML pipeline v1
-**Status:** not started
+**Status:** done
 
-- Python service, batch/offline analysis of stored raw sessions.
-- Start with simple, explainable statistical/signal-processing features (e.g. inter-tap interval mean/variance) before reaching for ML models proper.
-- Establish `MLFeatureSet` / `MLResult` tables and a model-artifact versioning convention.
-- Decide async trigger mechanism (see `decisions/0005-kafka-deferred.md`).
+- [x] `services/ml` Python service: polls Postgres every 30s for sessions with no `MLResult` row yet under the current model/version, computes metrics, saves a row — no Kafka/queue, per `decisions/0005-kafka-deferred.md`.
+- [x] `MLResult` table (Prisma migration) with a `(sessionId, modelId, modelVersion)` uniqueness convention — a math change bumps `modelVersion` rather than overwriting old rows, keeping every past result reproducible. See `data-model.md`.
+- [x] Real statistical/signal-processing features for all six test types: tap timing/consistency/fatigue (Finger Tapping), reaction speed/consistency/lapses (Reaction Time), tap accuracy/speed (Target Tapping), path deviation/smoothness (Finger Tracing), shake amplitude/frequency (Phone Stability), prompt response latency/peak/direction (Guided Movement).
+- [x] Unit tests (hand-computed synthetic fixtures) and integration tests (real `mino_test` Postgres) for every feature module; verified against real captured dev-DB sessions for every test type.
+- Explicitly out of scope, deferred to later phases: no LLM explanation layer yet (Phase 4), no cross-session baseline/anomaly detection yet (Phase 5).
 
 ## Phase 4 — LLM explanation layer
 **Status:** not started
