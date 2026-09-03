@@ -13,6 +13,7 @@ enum TestType {
   FingerTapping
   ReactionTime
   TargetTapping
+  FingerTracing
 }
 
 enum TouchEventType {
@@ -20,6 +21,7 @@ enum TouchEventType {
   TouchUp
   StimulusShown
   TargetShown
+  TouchMove
 }
 
 enum SessionStatus {
@@ -44,6 +46,7 @@ model TestSession {
   clientAppVersion String
   deviceMetadata   Json
   status           SessionStatus
+  testParams       Json?
   events           RawEvent[]
 
   @@index([userId])

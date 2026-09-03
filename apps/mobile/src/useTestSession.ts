@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import * as Device from 'expo-device';
 import type {
+  FingerTracingParams,
   RawTouchEvent,
   TestSessionSubmission,
   TestType,
@@ -20,6 +21,8 @@ interface UseTestSessionOptions {
   testType: TestType;
   /** If provided, the session auto-ends via a countdown when it reaches 0. */
   durationMs?: number;
+  /** Static per-session config submitted alongside the raw events, if any. */
+  testParams?: FingerTracingParams;
 }
 
 interface PushEventExtra {
@@ -33,7 +36,11 @@ interface PushEventExtra {
  * test screen: tracks captured events, builds the submission payload, and
  * posts it to the API. Test-specific capture UI lives in each screen.
  */
-export function useTestSession({ testType, durationMs }: UseTestSessionOptions) {
+export function useTestSession({
+  testType,
+  durationMs,
+  testParams,
+}: UseTestSessionOptions) {
   const [state, setState] = useState<TestSessionState>('idle');
   const [secondsLeft, setSecondsLeft] = useState(
     durationMs ? durationMs / 1000 : 0,
@@ -99,6 +106,7 @@ export function useTestSession({ testType, durationMs }: UseTestSessionOptions) 
           model: Device.modelName ?? 'unknown',
         },
         events: eventsRef.current,
+        ...(testParams ? { testParams } : {}),
       };
 
       const response = await fetch(`${API_BASE_URL}/sessions`, {

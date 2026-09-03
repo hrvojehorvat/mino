@@ -152,6 +152,50 @@ describe('SessionsController (e2e)', () => {
     expect(events[1]).toMatchObject({ x: 118, y: 338, pointerId: 0 });
   });
 
+  it('persists a Finger Tracing session with testParams and touchMove events', async () => {
+    const payload = {
+      ...basePayload,
+      testType: 'fingerTracing',
+      testParams: {
+        referencePath: [
+          { x: 40, y: 100 },
+          { x: 200, y: 250 },
+          { x: 360, y: 100 },
+        ],
+      },
+      events: [
+        { seq: 0, eventType: 'touchDown', tMs: 0, x: 40, y: 100, pointerId: 0 },
+        { seq: 1, eventType: 'touchMove', tMs: 40, x: 90, y: 150, pointerId: 0 },
+        { seq: 2, eventType: 'touchMove', tMs: 80, x: 150, y: 210, pointerId: 0 },
+        { seq: 3, eventType: 'touchUp', tMs: 400, x: 360, y: 100, pointerId: 0 },
+      ],
+    };
+
+    const response = await request(app.getHttpServer())
+      .post('/sessions')
+      .send(payload)
+      .expect(201);
+
+    const sessions = await prisma.testSession.findMany();
+    expect(sessions[0]).toMatchObject({
+      id: response.body.id,
+      testType: 'FingerTracing',
+      status: 'Completed',
+      testParams: payload.testParams,
+    });
+
+    const events = await prisma.rawEvent.findMany({
+      where: { sessionId: response.body.id },
+      orderBy: { seq: 'asc' },
+    });
+    expect(events.map((e) => e.eventType)).toEqual([
+      'TouchDown',
+      'TouchMove',
+      'TouchMove',
+      'TouchUp',
+    ]);
+  });
+
   it('rejects a submission missing deviceId (400)', async () => {
     const { deviceId: _deviceId, ...payloadWithoutDeviceId } = basePayload;
     await request(app.getHttpServer())

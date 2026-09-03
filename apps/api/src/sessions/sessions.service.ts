@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { SessionStatus, TestType, TouchEventType } from '@prisma/client';
+import { Prisma, SessionStatus, TestType, TouchEventType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateTestSessionDto } from './dto/create-test-session.dto.js';
 
@@ -10,6 +10,7 @@ const testTypeMap: Record<string, TestType> = {
   fingerTapping: TestType.FingerTapping,
   reactionTime: TestType.ReactionTime,
   targetTapping: TestType.TargetTapping,
+  fingerTracing: TestType.FingerTracing,
 };
 
 const eventTypeMap: Record<string, TouchEventType> = {
@@ -17,6 +18,7 @@ const eventTypeMap: Record<string, TouchEventType> = {
   touchUp: TouchEventType.TouchUp,
   stimulusShown: TouchEventType.StimulusShown,
   targetShown: TouchEventType.TargetShown,
+  touchMove: TouchEventType.TouchMove,
 };
 
 @Injectable()
@@ -63,6 +65,13 @@ export class SessionsService {
         clientAppVersion: dto.clientAppVersion,
         deviceMetadata: { ...dto.deviceMetadata },
         status: SessionStatus.Completed,
+        ...(dto.testParams
+          ? {
+              testParams: {
+                ...dto.testParams,
+              } as unknown as Prisma.InputJsonValue,
+            }
+          : {}),
         events: {
           createMany: {
             data: dto.events.map((e) => ({

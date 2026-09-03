@@ -5,11 +5,13 @@ import type { TestType } from '@mino/shared-types';
 import TappingScreen from './src/TappingScreen';
 import ReactionTimeScreen from './src/ReactionTimeScreen';
 import TargetTappingScreen from './src/TargetTappingScreen';
+import FingerTracingScreen from './src/FingerTracingScreen';
 
 const TESTS: { testType: TestType; label: string }[] = [
   { testType: 'fingerTapping', label: 'Finger Tapping' },
   { testType: 'reactionTime', label: 'Reaction Time' },
   { testType: 'targetTapping', label: 'Target Tapping' },
+  { testType: 'fingerTracing', label: 'Finger Tracing' },
 ];
 
 export default function App() {
@@ -30,6 +32,7 @@ export default function App() {
           {selectedTest === 'fingerTapping' && <TappingScreen />}
           {selectedTest === 'reactionTime' && <ReactionTimeScreen />}
           {selectedTest === 'targetTapping' && <TargetTappingScreen />}
+          {selectedTest === 'fingerTracing' && <FingerTracingScreen />}
         </View>
       )}
       <StatusBar style="auto" />
