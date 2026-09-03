@@ -3,7 +3,8 @@ export type TestType =
   | "reactionTime"
   | "targetTapping"
   | "fingerTracing"
-  | "phoneStability";
+  | "phoneStability"
+  | "guidedMovement";
 
 export type TouchEventType =
   | "touchDown"

@@ -25,6 +25,7 @@ export class CreateTestSessionDto {
     'targetTapping',
     'fingerTracing',
     'phoneStability',
+    'guidedMovement',
   ])
   testType!: TestType;
 

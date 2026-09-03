@@ -26,11 +26,13 @@ Status legend: not started / in progress / done. Update the status line for a ph
 - Done when: see `testing.md` for exact criteria.
 
 ## Phase 2 — Expand to remaining test types (data collection only)
-**Status:** not started
+**Status:** done
 
-- Add reaction time, target tapping, finger tracing, phone stability, guided movement — capture and ingestion only, still no ML/LLM.
-- Resolve continuous-sensor storage decision here (see `decisions/0003-raw-event-storage-model.md` open question) — accelerometer/gyroscope tests at 50-100Hz won't fit the row-per-discrete-event model used for tapping.
-- Stress-test the batched-HTTP transport decision at higher data volumes (see `decisions/0004-batched-http-transport.md`).
+- [x] Reaction Time, Target Tapping, Finger Tracing — extend `RawEvent`/`TouchEventType`, no schema restructure.
+- [x] Continuous-sensor storage decision resolved (see `decisions/0003-raw-event-storage-model.md`) — new `SensorSession` JSONB model, isolated behind `SensorSessionsService.storeSamples()`.
+- [x] Phone Stability, Guided Movement — `useMotionSensors` shared hook (accelerometer+gyroscope capture, sensor-availability gating, web always treated as unavailable). Guided Movement adds on-screen timed prompts (UI-only, not persisted).
+- [x] Batched-HTTP transport decision reviewed against real sensor payload sizes (see `decisions/0004-batched-http-transport.md`) — found and fixed Express's default 100kb body limit, which real payloads exceeded.
+- Still no ML/LLM — capture and ingestion only, per Phase 2 scope.
 - **Future improvement, not yet scheduled:** Finger Tracing currently shows one fixed reference path per session. Extend it to multiple trials per session (minimum 3, e.g. 5 to match Reaction Time) drawn from a pool of ~10 varied curve shapes, picked randomly per run — avoids users memorizing a single fixed line. Same pattern as Reaction Time's multi-trial change: no schema change needed, widen `testParams.referencePaths` to an array and infer trial boundaries from `touchDown`/`touchUp` pairing in the event stream.
 
 ## Phase 3 — ML pipeline v1

@@ -19,5 +19,17 @@ Grows as test types/phases are added. Each phase should append its own "done" se
 
 This keeps verification proportionate to MVP scope: a real integration test where it matters most (the ingestion pipeline), manual checks where automation would be premature investment (mobile E2E).
 
+## Phase 2 — Remaining test types (data collection only)
+
+**Definition of done:**
+1. All five remaining test types (Reaction Time, Target Tapping, Finger Tracing, Phone Stability, Guided Movement) are launchable from the mobile home screen, each capturing its raw data and submitting successfully.
+2. Discrete-event tests (Reaction Time, Target Tapping, Finger Tracing) persist as `RawEvent` rows with the correct `eventType` sequence; Finger Tracing additionally persists its `testParams.referencePath`.
+3. Continuous-sensor tests (Phone Stability, Guided Movement) persist a `SensorSession` row containing the ordered `samples` array, with zero `RawEvent` rows.
+4. Sensor-based tests gate their Start button on sensor availability up front (`useMotionSensors`'s `checking`/`available`/`unavailable` status) rather than letting the user hit a runtime failure — web is always treated as `unavailable` since expo-sensors' web shim is unreliable (see `lessons.md`).
+5. Type checks pass across the whole workspace, and `apps/api`'s e2e suite has a happy-path case per new test type (10/10 passing as of Subphase 2.5).
+6. Manual verification pass on both a physical device (Expo Go) and `expo export --platform web`, for every new screen.
+
+**Testing approach:** same as Phase 1 — one backend e2e happy-path case per test type asserting the correct rows land (`RawEvent` sequence or `SensorSession.samples`), plus manual on-device/web checks per screen as it's built. No new automation category needed; Phase 2 extends the same pipeline Phase 1 established rather than introducing a new one.
+
 ## Later phases
-To be filled in as each phase is planned in detail (Phase 2: per-test-type ingestion checks; Phase 3: ML output correctness/regression checks against known synthetic inputs; Phase 4: LLM guardrail eval set against prohibited-language cases).
+To be filled in as each phase is planned in detail (Phase 3: ML output correctness/regression checks against known synthetic inputs; Phase 4: LLM guardrail eval set against prohibited-language cases).

@@ -14,7 +14,7 @@ One row per completed (or attempted) test run.
 |---|---|
 | `id` | |
 | `userId` | FK → User |
-| `testType` | enum; `FingerTapping`, `ReactionTime`, `TargetTapping`, `FingerTracing`, `PhoneStability`, ... |
+| `testType` | enum; `FingerTapping`, `ReactionTime`, `TargetTapping`, `FingerTracing`, `PhoneStability`, `GuidedMovement` |
 | `startedAt` / `endedAt` | |
 | `clientAppVersion` | |
 | `deviceMetadata` | JSON: OS, model — useful for later data-quality analysis |
@@ -41,7 +41,7 @@ Finger Tracing's `TouchMove` samples are client-side throttled (~40ms) rather th
 **Design decision — relational rows vs blob, for MVP:** store raw events as normalized rows (one row per event) rather than a JSON blob column or object storage. For finger tapping specifically: event count per session is small (tens, not thousands+), it lets you query/inspect raw data trivially with SQL during MVP verification, and it avoids a premature storage abstraction before it's proven necessary.
 
 ### SensorSession
-The raw storage table for continuous accelerometer/gyroscope streams (phone stability, guided movement) — one row per session, not one row per sample.
+The raw storage table for continuous accelerometer/gyroscope streams (`PhoneStability`, `GuidedMovement`) — one row per session, not one row per sample.
 
 | field | notes |
 |---|---|

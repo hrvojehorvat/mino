@@ -1,12 +1,8 @@
-import { useEffect, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Accelerometer, Gyroscope } from 'expo-sensors';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTestSession } from './useTestSession';
+import { useMotionSensors } from './useMotionSensors';
 
 const HOLD_DURATION_MS = 10000;
-const SENSOR_UPDATE_INTERVAL_MS = 20; // ~50Hz
-
-type SensorsStatus = 'checking' | 'available' | 'unavailable';
 
 export default function PhoneStabilityScreen() {
   const { state, secondsLeft, start, pushSensorSample, endSession } =
@@ -18,72 +14,11 @@ export default function PhoneStabilityScreen() {
   // This test needs both accelerometer and gyroscope data to be meaningful —
   // checked up front so we can disable Start with an explanation rather than
   // silently recording a partial/degraded session.
-  const [sensorsStatus, setSensorsStatus] = useState<SensorsStatus>('checking');
-
-  useEffect(() => {
-    // expo-sensors' web shim unreliably reports availability (isAvailableAsync
-    // can resolve true even though setUpdateInterval/addListener then fail) —
-    // Mino is a mobile app, so treat web as always unavailable for this test
-    // rather than trusting that shim.
-    if (Platform.OS === 'web') {
-      setSensorsStatus('unavailable');
-      return;
-    }
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const [accelAvailable, gyroAvailable] = await Promise.all([
-          Accelerometer.isAvailableAsync(),
-          Gyroscope.isAvailableAsync(),
-        ]);
-        if (!cancelled) {
-          setSensorsStatus(accelAvailable && gyroAvailable ? 'available' : 'unavailable');
-        }
-      } catch {
-        if (!cancelled) setSensorsStatus('unavailable');
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (state !== 'running') return;
-
-    let accelSub: { remove: () => void } | null = null;
-    let gyroSub: { remove: () => void } | null = null;
-    let latestGyro = { x: 0, y: 0, z: 0 };
-
-    try {
-      Accelerometer.setUpdateInterval(SENSOR_UPDATE_INTERVAL_MS);
-      Gyroscope.setUpdateInterval(SENSOR_UPDATE_INTERVAL_MS);
-      gyroSub = Gyroscope.addListener((data) => {
-        latestGyro = data;
-      });
-      accelSub = Accelerometer.addListener((data) => {
-        pushSensorSample({
-          ax: data.x,
-          ay: data.y,
-          az: data.z,
-          gx: latestGyro.x,
-          gy: latestGyro.y,
-          gz: latestGyro.z,
-        });
-      });
-    } catch {
-      // isAvailableAsync() can false-positive (seen on desktop web); bail
-      // out rather than crash or sit through a countdown collecting nothing.
-      void endSession();
-    }
-
-    return () => {
-      accelSub?.remove();
-      gyroSub?.remove();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state]);
+  const sensorsStatus = useMotionSensors(
+    state === 'running',
+    pushSensorSample,
+    () => void endSession(),
+  );
 
   if (state === 'idle') {
     const disabled = sensorsStatus !== 'available';

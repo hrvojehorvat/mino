@@ -14,6 +14,7 @@ const testTypeMap: Record<string, TestType> = {
   targetTapping: TestType.TargetTapping,
   fingerTracing: TestType.FingerTracing,
   phoneStability: TestType.PhoneStability,
+  guidedMovement: TestType.GuidedMovement,
 };
 
 const eventTypeMap: Record<string, TouchEventType> = {

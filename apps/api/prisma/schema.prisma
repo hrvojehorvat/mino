@@ -15,6 +15,7 @@ enum TestType {
   TargetTapping
   FingerTracing
   PhoneStability
+  GuidedMovement
 }
 
 enum TouchEventType {

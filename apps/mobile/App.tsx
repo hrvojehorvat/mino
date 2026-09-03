@@ -7,6 +7,7 @@ import ReactionTimeScreen from './src/ReactionTimeScreen';
 import TargetTappingScreen from './src/TargetTappingScreen';
 import FingerTracingScreen from './src/FingerTracingScreen';
 import PhoneStabilityScreen from './src/PhoneStabilityScreen';
+import GuidedMovementScreen from './src/GuidedMovementScreen';
 import { ErrorBoundary } from './src/ErrorBoundary';
 
 const TESTS: { testType: TestType; label: string }[] = [
@@ -15,6 +16,7 @@ const TESTS: { testType: TestType; label: string }[] = [
   { testType: 'targetTapping', label: 'Target Tapping' },
   { testType: 'fingerTracing', label: 'Finger Tracing' },
   { testType: 'phoneStability', label: 'Phone Stability' },
+  { testType: 'guidedMovement', label: 'Guided Movement' },
 ];
 
 export default function App() {
@@ -38,6 +40,7 @@ export default function App() {
             {selectedTest === 'targetTapping' && <TargetTappingScreen />}
             {selectedTest === 'fingerTracing' && <FingerTracingScreen />}
             {selectedTest === 'phoneStability' && <PhoneStabilityScreen />}
+            {selectedTest === 'guidedMovement' && <GuidedMovementScreen />}
           </ErrorBoundary>
         </View>
       )}
