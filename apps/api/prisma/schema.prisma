@@ -12,12 +12,14 @@ datasource db {
 enum TestType {
   FingerTapping
   ReactionTime
+  TargetTapping
 }
 
 enum TouchEventType {
   TouchDown
   TouchUp
   StimulusShown
+  TargetShown
 }
 
 enum SessionStatus {

@@ -1,12 +1,18 @@
-export type TestType = "fingerTapping" | "reactionTime";
+export type TestType = "fingerTapping" | "reactionTime" | "targetTapping";
 
-export type TouchEventType = "touchDown" | "touchUp" | "stimulusShown";
+export type TouchEventType =
+  | "touchDown"
+  | "touchUp"
+  | "stimulusShown"
+  | "targetShown";
 
 export interface RawTouchEvent {
   seq: number;
   eventType: TouchEventType;
   tMs: number;
-  // x/y/pointerId are only meaningful for touchDown/touchUp events.
+  // x/y are the touch position for touchDown/touchUp, or the target's
+  // spawn position for targetShown. pointerId is only meaningful for
+  // touchDown/touchUp.
   x?: number;
   y?: number;
   pointerId?: number;

@@ -14,7 +14,7 @@ One row per completed (or attempted) test run.
 |---|---|
 | `id` | |
 | `userId` | FK → User |
-| `testType` | enum; `FingerTapping`, `ReactionTime`, ... |
+| `testType` | enum; `FingerTapping`, `ReactionTime`, `TargetTapping`, ... |
 | `startedAt` / `endedAt` | |
 | `clientAppVersion` | |
 | `deviceMetadata` | JSON: OS, model — useful for later data-quality analysis |
@@ -30,10 +30,10 @@ The raw time-series table for discrete-event tests (tapping, reaction time, targ
 | `id` | |
 | `sessionId` | FK → TestSession |
 | `seq` | monotonic sequence number within session — don't rely on timestamp ordering alone |
-| `eventType` | `TouchDown` / `TouchUp` / `StimulusShown` (Reaction Time) / ... |
+| `eventType` | `TouchDown` / `TouchUp` / `StimulusShown` (Reaction Time) / `TargetShown` (Target Tapping) / ... |
 | `tMs` | timestamp relative to session start, milliseconds, client-clock |
-| `x`, `y` | nullable — only meaningful for touch-position events (`TouchDown`/`TouchUp`); e.g. `StimulusShown` has no position |
-| `pointerId` | nullable — only meaningful for touch events |
+| `x`, `y` | nullable, and their meaning depends on `eventType`: touch position for `TouchDown`/`TouchUp`, the target's spawn position for `TargetShown`; null for events with no position at all (e.g. `StimulusShown`) |
+| `pointerId` | nullable — only meaningful for `TouchDown`/`TouchUp` |
 
 **Design decision — relational rows vs blob, for MVP:** store raw events as normalized rows (one row per event) rather than a JSON blob column or object storage. For finger tapping specifically: event count per session is small (tens, not thousands+), it lets you query/inspect raw data trivially with SQL during MVP verification, and it avoids a premature storage abstraction before it's proven necessary.
 

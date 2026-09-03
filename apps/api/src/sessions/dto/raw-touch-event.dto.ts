@@ -6,7 +6,7 @@ export class RawTouchEventDto {
   @Min(0)
   seq!: number;
 
-  @IsIn(['touchDown', 'touchUp', 'stimulusShown'])
+  @IsIn(['touchDown', 'touchUp', 'stimulusShown', 'targetShown'])
   eventType!: TouchEventType;
 
   @IsInt()

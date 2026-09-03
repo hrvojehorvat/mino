@@ -114,6 +114,44 @@ describe('SessionsController (e2e)', () => {
     expect(events[0].pointerId).toBeNull();
   });
 
+  it('persists a Target Tapping session with targetShown + touchDown/touchUp events', async () => {
+    const payload = {
+      ...basePayload,
+      testType: 'targetTapping',
+      events: [
+        { seq: 0, eventType: 'targetShown', tMs: 0, x: 120, y: 340 },
+        { seq: 1, eventType: 'touchDown', tMs: 420, x: 118, y: 338, pointerId: 0 },
+        { seq: 2, eventType: 'touchUp', tMs: 480, x: 118, y: 338, pointerId: 0 },
+        { seq: 3, eventType: 'targetShown', tMs: 490, x: 60, y: 200 },
+      ],
+    };
+
+    const response = await request(app.getHttpServer())
+      .post('/sessions')
+      .send(payload)
+      .expect(201);
+
+    const sessions = await prisma.testSession.findMany();
+    expect(sessions[0]).toMatchObject({
+      id: response.body.id,
+      testType: 'TargetTapping',
+      status: 'Completed',
+    });
+
+    const events = await prisma.rawEvent.findMany({
+      where: { sessionId: response.body.id },
+      orderBy: { seq: 'asc' },
+    });
+    expect(events.map((e) => e.eventType)).toEqual([
+      'TargetShown',
+      'TouchDown',
+      'TouchUp',
+      'TargetShown',
+    ]);
+    expect(events[0]).toMatchObject({ x: 120, y: 340, pointerId: null });
+    expect(events[1]).toMatchObject({ x: 118, y: 338, pointerId: 0 });
+  });
+
   it('rejects a submission missing deviceId (400)', async () => {
     const { deviceId: _deviceId, ...payloadWithoutDeviceId } = basePayload;
     await request(app.getHttpServer())

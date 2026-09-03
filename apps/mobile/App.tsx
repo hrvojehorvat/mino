@@ -4,10 +4,12 @@ import { StatusBar } from 'expo-status-bar';
 import type { TestType } from '@mino/shared-types';
 import TappingScreen from './src/TappingScreen';
 import ReactionTimeScreen from './src/ReactionTimeScreen';
+import TargetTappingScreen from './src/TargetTappingScreen';
 
 const TESTS: { testType: TestType; label: string }[] = [
   { testType: 'fingerTapping', label: 'Finger Tapping' },
   { testType: 'reactionTime', label: 'Reaction Time' },
+  { testType: 'targetTapping', label: 'Target Tapping' },
 ];
 
 export default function App() {
@@ -27,6 +29,7 @@ export default function App() {
           </Pressable>
           {selectedTest === 'fingerTapping' && <TappingScreen />}
           {selectedTest === 'reactionTime' && <ReactionTimeScreen />}
+          {selectedTest === 'targetTapping' && <TargetTappingScreen />}
         </View>
       )}
       <StatusBar style="auto" />
