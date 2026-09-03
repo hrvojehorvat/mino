@@ -81,9 +81,18 @@ export class SessionsService {
       update: {},
     });
 
+    const batch = await this.prisma.testBatch.findUnique({
+      where: { id: dto.batchId },
+    });
+
+    if (!batch || batch.userId !== user.id) {
+      throw new BadRequestException('batchId does not exist for this device');
+    }
+
     const session = await this.prisma.testSession.create({
       data: {
         userId: user.id,
+        batchId: dto.batchId,
         testType: testTypeMap[dto.testType],
         startedAt,
         endedAt,

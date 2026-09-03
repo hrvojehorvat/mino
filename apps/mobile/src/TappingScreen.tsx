@@ -1,10 +1,12 @@
 import { GestureResponderEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SESSION_DURATION_MS } from './config';
 import { useTestSession } from './useTestSession';
+import type { TestScreenProps } from './TestScreenProps';
 
-export default function TappingScreen() {
+export default function TappingScreen({ batchId, onDone, nextLabel }: TestScreenProps) {
   const { state, secondsLeft, eventCount, start, pushEvent } = useTestSession({
     testType: 'fingerTapping',
+    batchId,
     durationMs: SESSION_DURATION_MS,
   });
 
@@ -81,8 +83,8 @@ export default function TappingScreen() {
         <Text style={styles.title}>Session complete</Text>
         <Text style={styles.subtitle}>{eventCount} events captured</Text>
       </View>
-      <Pressable style={styles.startButton} onPress={start}>
-        <Text style={styles.startButtonText}>Run again</Text>
+      <Pressable style={styles.startButton} onPress={onDone}>
+        <Text style={styles.startButtonText}>{nextLabel}</Text>
       </Pressable>
     </View>
   );

@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SESSION_DURATION_MS } from './config';
 import { useTestSession } from './useTestSession';
+import type { TestScreenProps } from './TestScreenProps';
 
 const TARGET_SIZE = 80;
 const TOP_SAFE_AREA = 120;
@@ -23,10 +24,11 @@ function randomTargetPosition(width: number, height: number) {
   };
 }
 
-export default function TargetTappingScreen() {
+export default function TargetTappingScreen({ batchId, onDone, nextLabel }: TestScreenProps) {
   const { width, height } = useWindowDimensions();
   const { state, secondsLeft, eventCount, start, pushEvent } = useTestSession({
     testType: 'targetTapping',
+    batchId,
     durationMs: SESSION_DURATION_MS,
   });
   const [targetPos, setTargetPos] = useState(() =>
@@ -124,8 +126,8 @@ export default function TargetTappingScreen() {
         <Text style={styles.title}>Session complete</Text>
         <Text style={styles.subtitle}>{eventCount} events captured</Text>
       </View>
-      <Pressable style={styles.startButton} onPress={start}>
-        <Text style={styles.startButtonText}>Run again</Text>
+      <Pressable style={styles.startButton} onPress={onDone}>
+        <Text style={styles.startButtonText}>{nextLabel}</Text>
       </Pressable>
     </View>
   );

@@ -4,8 +4,9 @@ import request from 'supertest';
 import { AppModule } from './../src/app.module.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
 
-const basePayload = {
+const basePayload: Record<string, unknown> = {
   deviceId: '11111111-1111-4111-8111-111111111111',
+  batchId: '',
   testType: 'fingerTapping',
   startedAt: '2026-09-02T22:00:00.000Z',
   endedAt: '2026-09-02T22:00:10.000Z',
@@ -36,7 +37,13 @@ describe('SessionsController (e2e)', () => {
     await prisma.rawEvent.deleteMany();
     await prisma.sensorSession.deleteMany();
     await prisma.testSession.deleteMany();
+    await prisma.testBatch.deleteMany();
     await prisma.user.deleteMany();
+
+    const batchResponse = await request(app.getHttpServer())
+      .post('/batches')
+      .send({ deviceId: basePayload.deviceId });
+    basePayload.batchId = batchResponse.body.id;
   });
 
   afterEach(async () => {

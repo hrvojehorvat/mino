@@ -19,6 +19,9 @@ export class CreateTestSessionDto {
   @IsUUID('4')
   deviceId!: string;
 
+  @IsString()
+  batchId!: string;
+
   @IsIn([
     'fingerTapping',
     'reactionTime',

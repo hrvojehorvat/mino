@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTestSession } from './useTestSession';
+import type { TestScreenProps } from './TestScreenProps';
 
 const MIN_DELAY_MS = 1000;
 const MAX_DELAY_MS = 4000;
 const TRIAL_COUNT = 5;
 
-export default function ReactionTimeScreen() {
+export default function ReactionTimeScreen({ batchId, onDone, nextLabel }: TestScreenProps) {
   const { state, start, pushEvent, endSession } = useTestSession({
     testType: 'reactionTime',
+    batchId,
   });
   const [stimulusVisible, setStimulusVisible] = useState(false);
   const [trialIndex, setTrialIndex] = useState(0);
@@ -132,8 +134,8 @@ export default function ReactionTimeScreen() {
           Average reaction time: {average}ms across {reactionTimes.length} trials
         </Text>
       </View>
-      <Pressable style={styles.startButton} onPress={handleStart}>
-        <Text style={styles.startButtonText}>Run again</Text>
+      <Pressable style={styles.startButton} onPress={onDone}>
+        <Text style={styles.startButtonText}>{nextLabel}</Text>
       </Pressable>
     </View>
   );

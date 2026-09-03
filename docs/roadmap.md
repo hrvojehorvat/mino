@@ -44,6 +44,15 @@ Status legend: not started / in progress / done. Update the status line for a ph
 - [x] Unit tests (hand-computed synthetic fixtures) and integration tests (real `mino_test` Postgres) for every feature module; verified against real captured dev-DB sessions for every test type.
 - Explicitly out of scope, deferred to later phases: no LLM explanation layer yet (Phase 4), no cross-session baseline/anomaly detection yet (Phase 5).
 
+## Phase 3.5 — Test batches
+**Status:** done
+
+- [x] `TestBatch` table (id, userId, name — optional, createdAt); `TestSession` now requires a `batchId`. No status field — a batch is just however many sessions it has so far. Existing pre-batch dev sessions were preserved via a backfilled "Legacy sessions" batch per user, not deleted.
+- [x] Backend: `POST /batches` (create, optional name), `GET /batches?deviceId=...` (history list with session counts, newest first). `POST /sessions` requires and validates `batchId` against the submitting device's own batches.
+- [x] Mobile: `BatchPickerScreen` (tap tests to add them to an ordered set, optional name, "Start"), sequential runner in `App.tsx` (chains the picked tests automatically — each test's "Run again" became "Next test"/"Finish", no return to a list in between), `BatchHistoryScreen` (past batches by name/date/test count).
+- Why this came before Phase 4: the user's batching idea (one AI call per batch instead of per test, since the AI call — not Phase 3's free 30s poll — is the only metered step) changes the data model and navigation Phase 4 depends on either way; doing it first avoids building Phase 4 around single sessions and reworking it.
+- Verified via `apps/api`'s e2e suite (batch create/list/session-validation) and a manual on-device run building and completing a real multi-test batch.
+
 ## Phase 4 — LLM explanation layer
 **Status:** not started
 

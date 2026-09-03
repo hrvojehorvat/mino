@@ -36,12 +36,31 @@ model User {
   deviceId  String        @unique
   createdAt DateTime      @default(now())
   sessions  TestSession[]
+  batches   TestBatch[]
+}
+
+// A named, dated set of tests taken back-to-back in one run — chosen by the
+// user up front (see apps/mobile's batch picker screen). Kept distinct from
+// TestSession (still one single test) so "batch" and "session" never mean
+// the same thing. No status field: a batch is just however many sessions it
+// has so far, nothing else to track.
+model TestBatch {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id])
+  name      String?
+  createdAt DateTime      @default(now())
+  sessions  TestSession[]
+
+  @@index([userId])
 }
 
 model TestSession {
   id               String        @id @default(cuid())
   userId           String
   user             User          @relation(fields: [userId], references: [id])
+  batchId          String
+  batch            TestBatch     @relation(fields: [batchId], references: [id])
   testType         TestType
   startedAt        DateTime
   endedAt          DateTime
@@ -54,6 +73,7 @@ model TestSession {
   mlResults        MLResult[]
 
   @@index([userId])
+  @@index([batchId])
 }
 
 model RawEvent {

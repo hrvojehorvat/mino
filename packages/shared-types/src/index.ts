@@ -53,6 +53,10 @@ export interface DeviceMetadata {
 
 export interface TestSessionSubmission {
   deviceId: string;
+  // Every session belongs to a batch (see TestBatch) — even a batch of one
+  // test. Created up front via POST /batches before the first session in it
+  // is submitted.
+  batchId: string;
   testType: TestType;
   startedAt: string;
   endedAt: string;
@@ -73,4 +77,22 @@ export interface TestSessionSubmission {
 
 export interface TestSessionSubmissionResponse {
   id: string;
+}
+
+// A named, dated set of tests taken back-to-back in one run — see
+// TestSession.batchId and apps/mobile's batch picker screen.
+export interface TestBatchSubmission {
+  deviceId: string;
+  name?: string;
+}
+
+export interface TestBatchSubmissionResponse {
+  id: string;
+}
+
+export interface TestBatchSummary {
+  id: string;
+  name: string | null;
+  createdAt: string;
+  sessionCount: number;
 }

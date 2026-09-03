@@ -20,6 +20,8 @@ export type TestSessionState =
 
 interface UseTestSessionOptions {
   testType: TestType;
+  /** Every session belongs to a batch — see TestBatch/BatchPickerScreen. */
+  batchId: string;
   /** If provided, the session auto-ends via a countdown when it reaches 0. */
   durationMs?: number;
   /** Static per-session config submitted alongside the raw events, if any. */
@@ -39,6 +41,7 @@ interface PushEventExtra {
  */
 export function useTestSession({
   testType,
+  batchId,
   durationMs,
   testParams,
 }: UseTestSessionOptions) {
@@ -107,6 +110,7 @@ export function useTestSession({
       const deviceId = await getOrCreateDeviceId();
       const payload: TestSessionSubmission = {
         deviceId,
+        batchId,
         testType,
         startedAt: startedAtRef.current,
         endedAt,

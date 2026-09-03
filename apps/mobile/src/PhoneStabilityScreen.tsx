@@ -1,13 +1,15 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTestSession } from './useTestSession';
 import { useMotionSensors } from './useMotionSensors';
+import type { TestScreenProps } from './TestScreenProps';
 
 const HOLD_DURATION_MS = 10000;
 
-export default function PhoneStabilityScreen() {
+export default function PhoneStabilityScreen({ batchId, onDone, nextLabel }: TestScreenProps) {
   const { state, secondsLeft, start, pushSensorSample, endSession } =
     useTestSession({
       testType: 'phoneStability',
+      batchId,
       durationMs: HOLD_DURATION_MS,
     });
 
@@ -91,8 +93,8 @@ export default function PhoneStabilityScreen() {
         <Text style={styles.title}>Session complete</Text>
         <Text style={styles.subtitle}>Sensor data captured.</Text>
       </View>
-      <Pressable style={styles.startButton} onPress={start}>
-        <Text style={styles.startButtonText}>Run again</Text>
+      <Pressable style={styles.startButton} onPress={onDone}>
+        <Text style={styles.startButtonText}>{nextLabel}</Text>
       </Pressable>
     </View>
   );

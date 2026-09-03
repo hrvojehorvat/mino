@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTestSession } from './useTestSession';
 import { useMotionSensors } from './useMotionSensors';
+import type { TestScreenProps } from './TestScreenProps';
 
 // On-screen guidance only — the prompts themselves aren't persisted, just
 // the raw sensor stream. Matching prompt to motion is ML's job later.
@@ -17,10 +18,11 @@ const PROMPTS = [
 const PROMPT_DURATION_MS = 3000;
 const TOTAL_DURATION_MS = PROMPTS.length * PROMPT_DURATION_MS;
 
-export default function GuidedMovementScreen() {
+export default function GuidedMovementScreen({ batchId, onDone, nextLabel }: TestScreenProps) {
   const { state, secondsLeft, start, pushSensorSample, endSession } =
     useTestSession({
       testType: 'guidedMovement',
+      batchId,
       durationMs: TOTAL_DURATION_MS,
     });
 
@@ -116,8 +118,8 @@ export default function GuidedMovementScreen() {
         <Text style={styles.title}>Session complete</Text>
         <Text style={styles.subtitle}>Sensor data captured.</Text>
       </View>
-      <Pressable style={styles.startButton} onPress={start}>
-        <Text style={styles.startButtonText}>Run again</Text>
+      <Pressable style={styles.startButton} onPress={onDone}>
+        <Text style={styles.startButtonText}>{nextLabel}</Text>
       </Pressable>
     </View>
   );

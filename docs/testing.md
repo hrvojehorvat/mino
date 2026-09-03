@@ -42,5 +42,15 @@ This keeps verification proportionate to MVP scope: a real integration test wher
 
 **Testing approach:** unit tests carry the actual correctness bar (exact hand-computed numbers), integration tests prove the pipeline wiring end-to-end (DB → poller → saved row), and a final manual pass against real dev-DB data is the gate before calling a step done — synthetic fixtures alone missed real data-quality issues twice this phase (see `lessons.md`).
 
+## Phase 3.5 — Test batches
+
+**Definition of done:**
+1. `POST /batches` creates a batch (optionally named) for a device; `GET /batches?deviceId=...` lists that device's batches newest-first, each with its session count.
+2. `POST /sessions` requires `batchId` and rejects one that doesn't exist or belongs to a different device (400).
+3. A person can, on-device, pick 2+ tests in the mobile app, run them back-to-back without returning to a list in between, and see the resulting batch appear in the history list with the correct test count.
+4. Type checks pass across the whole workspace; `apps/api`'s e2e suite covers batch creation, listing, and session/batch validation.
+
+**Testing approach:** same pattern as Phase 1/2 — backend e2e tests against the real `mino_test` Postgres database for the new endpoints and the `batchId` validation path, plus a manual on-device run as the final gate (build a batch, run through it, confirm it shows up correctly in history).
+
 ## Later phases
 To be filled in as each phase is planned in detail (Phase 4: LLM guardrail eval set against prohibited-language cases).

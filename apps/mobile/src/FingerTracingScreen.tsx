@@ -8,6 +8,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useTestSession } from './useTestSession';
+import type { TestScreenProps } from './TestScreenProps';
 
 const SAMPLE_INTERVAL_MS = 40;
 const LINE_THICKNESS = 4;
@@ -20,7 +21,7 @@ function buildReferencePath(width: number, height: number) {
   ];
 }
 
-export default function FingerTracingScreen() {
+export default function FingerTracingScreen({ batchId, onDone, nextLabel }: TestScreenProps) {
   const { width, height } = useWindowDimensions();
   const referencePath = useMemo(
     () => buildReferencePath(width, height),
@@ -29,6 +30,7 @@ export default function FingerTracingScreen() {
 
   const { state, eventCount, start, pushEvent, endSession } = useTestSession({
     testType: 'fingerTracing',
+    batchId,
     testParams: { referencePath },
   });
 
@@ -146,8 +148,8 @@ export default function FingerTracingScreen() {
         <Text style={styles.title}>Session complete</Text>
         <Text style={styles.subtitle}>{eventCount} events captured</Text>
       </View>
-      <Pressable style={styles.startButton} onPress={start}>
-        <Text style={styles.startButtonText}>Run again</Text>
+      <Pressable style={styles.startButton} onPress={onDone}>
+        <Text style={styles.startButtonText}>{nextLabel}</Text>
       </Pressable>
     </View>
   );
