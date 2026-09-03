@@ -21,7 +21,8 @@ def process_session(conn: psycopg.Connection, session: dict) -> None:
     test_type = session["testType"]
     raw_events = db.load_raw_events(conn, session_id)
     sensor_samples = db.load_sensor_samples(conn, session_id)
-    metrics = compute_metrics(test_type, raw_events, sensor_samples)
+    test_params = session.get("testParams")
+    metrics = compute_metrics(test_type, raw_events, sensor_samples, test_params)
     db.save_result(conn, session_id, metrics)
     logger.info("processed session %s (%s)", session_id, test_type)
 

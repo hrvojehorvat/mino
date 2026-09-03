@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 from dotenv import load_dotenv
+from psycopg.types.json import Jsonb
 
 load_dotenv(Path(__file__).parent.parent / ".env.test")
 
@@ -35,7 +36,11 @@ def clean_db(conn):
 def make_session(conn):
     """Inserts a minimal User + TestSession row, returns the session id."""
 
-    def _make(test_type: str = "FingerTapping", status: str = "Completed") -> str:
+    def _make(
+        test_type: str = "FingerTapping",
+        status: str = "Completed",
+        test_params: dict | None = None,
+    ) -> str:
         with conn.cursor() as cur:
             device_id = str(uuid.uuid4())
             user_id = str(uuid.uuid4())
@@ -48,10 +53,10 @@ def make_session(conn):
                 """
                 INSERT INTO "TestSession"
                     (id, "userId", "testType", "startedAt", "endedAt",
-                     "clientAppVersion", "deviceMetadata", status)
-                VALUES (%s, %s, %s, now(), now(), '0.0.1', '{}', %s)
+                     "clientAppVersion", "deviceMetadata", status, "testParams")
+                VALUES (%s, %s, %s, now(), now(), '0.0.1', '{}', %s, %s)
                 """,
-                (session_id, user_id, test_type, status),
+                (session_id, user_id, test_type, status, Jsonb(test_params) if test_params else None),
             )
         conn.commit()
         return session_id
@@ -84,6 +89,22 @@ def insert_events(conn):
                         event.get("pointerId"),
                     ),
                 )
+        conn.commit()
+
+    return _insert
+
+
+@pytest.fixture
+def insert_sensor_samples(conn):
+    """Inserts a session's single SensorSession row (the whole stream is
+    one JSON array — see decisions/0003)."""
+
+    def _insert(session_id: str, samples: list[dict]) -> None:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO "SensorSession" (id, "sessionId", samples) VALUES (%s, %s, %s)""",
+                (str(uuid.uuid4()), session_id, Jsonb(samples)),
+            )
         conn.commit()
 
     return _insert

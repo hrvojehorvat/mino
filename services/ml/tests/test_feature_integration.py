@@ -66,3 +66,60 @@ def test_target_tapping_session_gets_real_metrics(conn, make_session, insert_eve
     metrics = _metrics_for(conn, session_id)
     assert metrics["hitCount"] == 1
     assert metrics["tapDistanceMeanPx"] == pytest.approx(10.7703, rel=1e-3)
+
+
+def test_finger_tracing_session_gets_real_metrics(conn, make_session, insert_events):
+    session_id = make_session(
+        test_type="FingerTracing",
+        test_params={"referencePath": [{"x": 0, "y": 0}, {"x": 10, "y": 0}]},
+    )
+    insert_events(
+        session_id,
+        [
+            {"eventType": "TouchDown", "tMs": 0, "x": 0, "y": 0},
+            {"eventType": "TouchMove", "tMs": 100, "x": 5, "y": 2},
+            {"eventType": "TouchUp", "tMs": 200, "x": 10, "y": 0},
+        ],
+    )
+
+    run_once(conn)
+
+    metrics = _metrics_for(conn, session_id)
+    assert metrics["pointCount"] == 3
+    assert metrics["completionTimeMs"] == pytest.approx(200)
+    assert metrics["pathDeviationMaxPx"] == pytest.approx(2.0)
+
+
+def test_phone_stability_session_gets_real_metrics(conn, make_session, insert_sensor_samples):
+    session_id = make_session(test_type="PhoneStability")
+    insert_sensor_samples(
+        session_id,
+        [
+            {"tMs": i * 20, "ax": 1.0, "ay": 0.0, "az": 0.0, "gx": 0.0, "gy": 0.0, "gz": 0.0}
+            for i in range(20)
+        ],
+    )
+
+    run_once(conn)
+
+    metrics = _metrics_for(conn, session_id)
+    assert metrics["accelRmsG"] == pytest.approx(0, abs=1e-9)
+
+
+def test_guided_movement_session_gets_real_metrics(conn, make_session, insert_sensor_samples):
+    session_id = make_session(test_type="GuidedMovement")
+    insert_sensor_samples(
+        session_id,
+        [
+            {"tMs": 0, "gx": 0.01, "gy": 0.01, "gz": 0.01},
+            {"tMs": 2500, "gx": 0.01, "gy": 0.01, "gz": 0.01},
+            {"tMs": 3000, "gx": 0.01, "gy": 0.0, "gz": 0.0},
+            {"tMs": 3500, "gx": 0.6, "gy": 0.0, "gz": 0.0},
+        ],
+    )
+
+    run_once(conn)
+
+    metrics = _metrics_for(conn, session_id)
+    assert metrics["promptCount"] == 1
+    assert metrics["responseLatencyMeanMs"] == pytest.approx(500.0)

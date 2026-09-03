@@ -41,7 +41,7 @@ def find_unprocessed_sessions(conn: psycopg.Connection) -> list[dict[str, Any]]:
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT ts.id, ts."testType"
+            SELECT ts.id, ts."testType", ts."testParams"
             FROM "TestSession" ts
             LEFT JOIN "MLResult" mr
               ON mr."sessionId" = ts.id
