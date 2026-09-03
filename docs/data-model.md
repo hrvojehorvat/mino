@@ -14,7 +14,7 @@ One row per completed (or attempted) test run.
 |---|---|
 | `id` | |
 | `userId` | FK → User |
-| `testType` | enum; `FingerTapping`, `ReactionTime`, `TargetTapping`, `FingerTracing`, ... |
+| `testType` | enum; `FingerTapping`, `ReactionTime`, `TargetTapping`, `FingerTracing`, `PhoneStability`, ... |
 | `startedAt` / `endedAt` | |
 | `clientAppVersion` | |
 | `deviceMetadata` | JSON: OS, model — useful for later data-quality analysis |
@@ -40,7 +40,16 @@ Finger Tracing's `TouchMove` samples are client-side throttled (~40ms) rather th
 
 **Design decision — relational rows vs blob, for MVP:** store raw events as normalized rows (one row per event) rather than a JSON blob column or object storage. For finger tapping specifically: event count per session is small (tens, not thousands+), it lets you query/inspect raw data trivially with SQL during MVP verification, and it avoids a premature storage abstraction before it's proven necessary.
 
-**Flagged for a Phase 2 decision, not resolved now:** continuous sensor streams (phone stability, guided movement) at 50-100Hz over tens of seconds mean thousands of rows/session — very likely to outgrow row-per-sample relational storage. Candidates to evaluate then: one row per session with a compressed serialized array (Parquet/Arrow in blob storage), or a JSONB array column as a middle ground. Don't build that generality now.
+### SensorSession
+The raw storage table for continuous accelerometer/gyroscope streams (phone stability, guided movement) — one row per session, not one row per sample.
+
+| field | notes |
+|---|---|
+| `id` | |
+| `sessionId` | FK → TestSession, unique (one `SensorSession` per session) |
+| `samples` | JSON array of `{ tMs, ax, ay, az, gx, gy, gz }`, ordered by `tMs` |
+
+See `decisions/0003-raw-event-storage-model.md` for why this is JSONB rather than row-per-sample or blob storage, and how ingestion is kept storage-agnostic so a later migration stays localized.
 
 ## Derived/ML tables (not built until Phase 3/4 — named here for clarity)
 

@@ -2,8 +2,10 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma, SessionStatus, TestType, TouchEventType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateTestSessionDto } from './dto/create-test-session.dto.js';
+import { SensorSessionsService } from './sensor-sessions.service.js';
 
 const MAX_TAPS_PER_SECOND = 20;
+const MAX_SENSOR_SAMPLES_PER_SECOND = 120;
 const T_MS_GRACE_MS = 500;
 
 const testTypeMap: Record<string, TestType> = {
@@ -11,6 +13,7 @@ const testTypeMap: Record<string, TestType> = {
   reactionTime: TestType.ReactionTime,
   targetTapping: TestType.TargetTapping,
   fingerTracing: TestType.FingerTracing,
+  phoneStability: TestType.PhoneStability,
 };
 
 const eventTypeMap: Record<string, TouchEventType> = {
@@ -23,9 +26,21 @@ const eventTypeMap: Record<string, TouchEventType> = {
 
 @Injectable()
 export class SessionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly sensorSessions: SensorSessionsService,
+  ) {}
 
   async create(dto: CreateTestSessionDto): Promise<{ id: string }> {
+    const events = dto.events ?? [];
+    const sensorSamples = dto.sensorSamples ?? [];
+
+    if (events.length === 0 && sensorSamples.length === 0) {
+      throw new BadRequestException(
+        'submission must include events or sensorSamples',
+      );
+    }
+
     const startedAt = new Date(dto.startedAt);
     const endedAt = new Date(dto.endedAt);
 
@@ -36,18 +51,27 @@ export class SessionsService {
     const durationMs = endedAt.getTime() - startedAt.getTime();
     const maxPlausibleEvents = (durationMs / 1000) * MAX_TAPS_PER_SECOND;
 
-    if (dto.events.length > maxPlausibleEvents) {
+    if (events.length > maxPlausibleEvents) {
       throw new BadRequestException(
         'event count exceeds what is physically possible for the session duration',
       );
     }
 
-    for (const event of dto.events) {
+    for (const event of events) {
       if (event.tMs > durationMs + T_MS_GRACE_MS) {
         throw new BadRequestException(
           'event tMs exceeds the session duration',
         );
       }
+    }
+
+    const maxPlausibleSamples =
+      (durationMs / 1000) * MAX_SENSOR_SAMPLES_PER_SECOND;
+
+    if (sensorSamples.length > maxPlausibleSamples) {
+      throw new BadRequestException(
+        'sensor sample count exceeds what is physically possible for the session duration',
+      );
     }
 
     const user = await this.prisma.user.upsert({
@@ -74,7 +98,7 @@ export class SessionsService {
           : {}),
         events: {
           createMany: {
-            data: dto.events.map((e) => ({
+            data: events.map((e) => ({
               seq: e.seq,
               eventType: eventTypeMap[e.eventType],
               tMs: e.tMs,
@@ -86,6 +110,10 @@ export class SessionsService {
         },
       },
     });
+
+    if (sensorSamples.length > 0) {
+      await this.sensorSessions.storeSamples(session.id, sensorSamples);
+    }
 
     return { id: session.id };
   }

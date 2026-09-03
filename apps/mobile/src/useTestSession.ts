@@ -3,6 +3,7 @@ import * as Device from 'expo-device';
 import type {
   FingerTracingParams,
   RawTouchEvent,
+  SensorSample,
   TestSessionSubmission,
   TestType,
   TouchEventType,
@@ -49,12 +50,14 @@ export function useTestSession({
 
   const sessionStartRef = useRef<number>(0);
   const eventsRef = useRef<RawTouchEvent[]>([]);
+  const sensorSamplesRef = useRef<SensorSample[]>([]);
   const seqRef = useRef(0);
   const startedAtRef = useRef<string>('');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const start = () => {
     eventsRef.current = [];
+    sensorSamplesRef.current = [];
     seqRef.current = 0;
     sessionStartRef.current = performance.now();
     startedAtRef.current = new Date().toISOString();
@@ -87,6 +90,14 @@ export function useTestSession({
     setEventCount(eventsRef.current.length);
   };
 
+  const pushSensorSample = (sample: Omit<SensorSample, 'tMs'>) => {
+    if (state !== 'running') return;
+    sensorSamplesRef.current.push({
+      tMs: Math.round(performance.now() - sessionStartRef.current),
+      ...sample,
+    });
+  };
+
   const endSession = async () => {
     if (timerRef.current) clearInterval(timerRef.current);
     setState('submitting');
@@ -107,6 +118,9 @@ export function useTestSession({
         },
         events: eventsRef.current,
         ...(testParams ? { testParams } : {}),
+        ...(sensorSamplesRef.current.length
+          ? { sensorSamples: sensorSamplesRef.current }
+          : {}),
       };
 
       const response = await fetch(`${API_BASE_URL}/sessions`, {
@@ -125,5 +139,13 @@ export function useTestSession({
     }
   };
 
-  return { state, secondsLeft, eventCount, start, pushEvent, endSession };
+  return {
+    state,
+    secondsLeft,
+    eventCount,
+    start,
+    pushEvent,
+    pushSensorSample,
+    endSession,
+  };
 }

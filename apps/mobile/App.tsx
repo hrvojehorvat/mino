@@ -6,12 +6,15 @@ import TappingScreen from './src/TappingScreen';
 import ReactionTimeScreen from './src/ReactionTimeScreen';
 import TargetTappingScreen from './src/TargetTappingScreen';
 import FingerTracingScreen from './src/FingerTracingScreen';
+import PhoneStabilityScreen from './src/PhoneStabilityScreen';
+import { ErrorBoundary } from './src/ErrorBoundary';
 
 const TESTS: { testType: TestType; label: string }[] = [
   { testType: 'fingerTapping', label: 'Finger Tapping' },
   { testType: 'reactionTime', label: 'Reaction Time' },
   { testType: 'targetTapping', label: 'Target Tapping' },
   { testType: 'fingerTracing', label: 'Finger Tracing' },
+  { testType: 'phoneStability', label: 'Phone Stability' },
 ];
 
 export default function App() {
@@ -29,10 +32,13 @@ export default function App() {
           >
             <Text style={styles.backButtonText}>{'< Tests'}</Text>
           </Pressable>
-          {selectedTest === 'fingerTapping' && <TappingScreen />}
-          {selectedTest === 'reactionTime' && <ReactionTimeScreen />}
-          {selectedTest === 'targetTapping' && <TargetTappingScreen />}
-          {selectedTest === 'fingerTracing' && <FingerTracingScreen />}
+          <ErrorBoundary key={selectedTest}>
+            {selectedTest === 'fingerTapping' && <TappingScreen />}
+            {selectedTest === 'reactionTime' && <ReactionTimeScreen />}
+            {selectedTest === 'targetTapping' && <TargetTappingScreen />}
+            {selectedTest === 'fingerTracing' && <FingerTracingScreen />}
+            {selectedTest === 'phoneStability' && <PhoneStabilityScreen />}
+          </ErrorBoundary>
         </View>
       )}
       <StatusBar style="auto" />

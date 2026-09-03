@@ -34,6 +34,7 @@ describe('SessionsController (e2e)', () => {
 
     prisma = app.get(PrismaService);
     await prisma.rawEvent.deleteMany();
+    await prisma.sensorSession.deleteMany();
     await prisma.testSession.deleteMany();
     await prisma.user.deleteMany();
   });
@@ -194,6 +195,42 @@ describe('SessionsController (e2e)', () => {
       'TouchMove',
       'TouchUp',
     ]);
+  });
+
+  it('persists a Phone Stability session as a SensorSession (no events)', async () => {
+    const payload = {
+      ...basePayload,
+      testType: 'phoneStability',
+      events: [],
+      sensorSamples: [
+        { tMs: 0, ax: 0.01, ay: 0.02, az: 9.8, gx: 0.001, gy: 0.002, gz: 0.0 },
+        { tMs: 20, ax: 0.01, ay: 0.02, az: 9.79, gx: 0.001, gy: 0.001, gz: 0.0 },
+        { tMs: 40, ax: 0.02, ay: 0.02, az: 9.81, gx: 0.002, gy: 0.001, gz: 0.0 },
+      ],
+    };
+
+    const response = await request(app.getHttpServer())
+      .post('/sessions')
+      .send(payload)
+      .expect(201);
+
+    const sessions = await prisma.testSession.findMany();
+    expect(sessions[0]).toMatchObject({
+      id: response.body.id,
+      testType: 'PhoneStability',
+      status: 'Completed',
+    });
+
+    const events = await prisma.rawEvent.findMany({
+      where: { sessionId: response.body.id },
+    });
+    expect(events).toHaveLength(0);
+
+    const sensorSession = await prisma.sensorSession.findFirst({
+      where: { sessionId: response.body.id },
+    });
+    expect(sensorSession).not.toBeNull();
+    expect(sensorSession?.samples).toEqual(payload.sensorSamples);
   });
 
   it('rejects a submission missing deviceId (400)', async () => {

@@ -14,6 +14,7 @@ enum TestType {
   ReactionTime
   TargetTapping
   FingerTracing
+  PhoneStability
 }
 
 enum TouchEventType {
@@ -48,6 +49,7 @@ model TestSession {
   status           SessionStatus
   testParams       Json?
   events           RawEvent[]
+  sensorSession    SensorSession?
 
   @@index([userId])
 }
@@ -65,4 +67,14 @@ model RawEvent {
 
   @@unique([sessionId, seq])
   @@index([sessionId])
+}
+
+// One row per session for continuous accelerometer/gyroscope streams
+// (phone stability, guided movement) — 50-100Hz sampling makes row-per-sample
+// storage (RawEvent's model) impractical. See decisions/0003.
+model SensorSession {
+  id        String      @id @default(cuid())
+  sessionId String      @unique
+  session   TestSession @relation(fields: [sessionId], references: [id])
+  samples   Json
 }
