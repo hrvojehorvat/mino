@@ -4,7 +4,10 @@
   "main": "index.ts",
   "dependencies": {
     "@mino/shared-types": "*",
+    "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "~57.0.19",
+    "expo-crypto": "~57.0.2",
+    "expo-device": "~57.0.1",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",

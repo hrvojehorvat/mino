@@ -1,5 +1,4 @@
-// Phase 0: tooling only — no models yet.
-// Models (User, TestSession, RawEvent) are added in Phase 1, see docs/data-model.md.
+// Phase 1: finger-tapping MVP. See docs/data-model.md.
 
 generator client {
   provider = "prisma-client-js"
@@ -8,4 +7,55 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum TestType {
+  FingerTapping
+}
+
+enum TouchEventType {
+  TouchDown
+  TouchUp
+}
+
+enum SessionStatus {
+  Completed
+  Aborted
+}
+
+model User {
+  id        String        @id @default(cuid())
+  deviceId  String        @unique
+  createdAt DateTime      @default(now())
+  sessions  TestSession[]
+}
+
+model TestSession {
+  id               String        @id @default(cuid())
+  userId           String
+  user             User          @relation(fields: [userId], references: [id])
+  testType         TestType
+  startedAt        DateTime
+  endedAt          DateTime
+  clientAppVersion String
+  deviceMetadata   Json
+  status           SessionStatus
+  events           RawEvent[]
+
+  @@index([userId])
+}
+
+model RawEvent {
+  id        String         @id @default(cuid())
+  sessionId String
+  session   TestSession    @relation(fields: [sessionId], references: [id])
+  seq       Int
+  eventType TouchEventType
+  tMs       Int
+  x         Float
+  y         Float
+  pointerId Int
+
+  @@unique([sessionId, seq])
+  @@index([sessionId])
 }

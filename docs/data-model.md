@@ -5,7 +5,7 @@ Guiding rule (from CLAUDE.md): preserve raw data whenever practical, and keep it
 ## Core entities
 
 ### User
-Minimal for MVP: `id`, `created_at`. Auth fields TBD — see the open question in `decisions/` (recommend starting with the simplest possible identity, e.g. a device-generated UUID with no real auth, deferring real authentication until multi-user/production need arises).
+Minimal for MVP: `id`, `deviceId`, `createdAt`. No real auth for MVP — resolved decision (see Phase 1 plan): a client-generated UUID persisted on-device is the identity, upserted into `User` on first submission. Real authentication is deferred until multi-user/production need arises.
 
 ### TestSession
 One row per completed (or attempted) test run.
@@ -13,12 +13,12 @@ One row per completed (or attempted) test run.
 | field | notes |
 |---|---|
 | `id` | |
-| `user_id` | FK → User |
-| `test_type` | enum; MVP only has `finger_tapping` |
-| `started_at` / `ended_at` | |
-| `client_app_version` | |
-| `device_metadata` | JSON: OS, model — useful for later data-quality analysis |
-| `status` | `completed` / `aborted` |
+| `userId` | FK → User |
+| `testType` | enum; MVP only has `FingerTapping` |
+| `startedAt` / `endedAt` | |
+| `clientAppVersion` | |
+| `deviceMetadata` | JSON: OS, model — useful for later data-quality analysis |
+| `status` | `Completed` / `Aborted` |
 
 Natural foreign-key anchor everything else hangs off.
 
@@ -28,12 +28,12 @@ The raw time-series table for discrete-event tests (tapping, reaction time, targ
 | field | notes |
 |---|---|
 | `id` | |
-| `session_id` | FK → TestSession |
+| `sessionId` | FK → TestSession |
 | `seq` | monotonic sequence number within session — don't rely on timestamp ordering alone |
-| `event_type` | `touch_down` / `touch_up` |
-| `t_ms` | timestamp relative to session start, milliseconds, client-clock |
+| `eventType` | `TouchDown` / `TouchUp` |
+| `tMs` | timestamp relative to session start, milliseconds, client-clock |
 | `x`, `y` | |
-| `pointer_id` | |
+| `pointerId` | |
 
 **Design decision — relational rows vs blob, for MVP:** store raw events as normalized rows (one row per event) rather than a JSON blob column or object storage. For finger tapping specifically: event count per session is small (tens, not thousands+), it lets you query/inspect raw data trivially with SQL during MVP verification, and it avoids a premature storage abstraction before it's proven necessary.
 
@@ -49,4 +49,4 @@ These are explicitly separate tables from `RawEvent`, never derived-in-place or 
 
 ## MVP scope boundary
 
-MVP (Phase 1) implements only `User`, `TestSession`, `RawEvent`. It does **not** compute or store any derived score/metric — no `tap_count` or `avg_interval` column on `TestSession`, even though it's tempting. That boundary must stay crisp from day one so the raw/derived separation isn't quietly violated in the very first feature.
+MVP (Phase 1) implements only `User`, `TestSession`, `RawEvent`. It does **not** compute or store any derived score/metric — no `tapCount` or `avgInterval` column on `TestSession`, even though it's tempting. That boundary must stay crisp from day one so the raw/derived separation isn't quietly violated in the very first feature.

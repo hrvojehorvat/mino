@@ -1,27 +1,32 @@
-export type TestType = "finger_tapping";
+export type TestType = "fingerTapping";
 
-export type TouchEventType = "touch_down" | "touch_up";
+export type TouchEventType = "touchDown" | "touchUp";
 
 export interface RawTouchEvent {
   seq: number;
-  event_type: TouchEventType;
-  t_ms: number;
+  eventType: TouchEventType;
+  tMs: number;
   x: number;
   y: number;
-  pointer_id: number;
+  pointerId: number;
 }
 
 export interface DeviceMetadata {
   os: string;
-  os_version: string;
+  osVersion: string;
   model: string;
 }
 
 export interface TestSessionSubmission {
-  test_type: TestType;
-  started_at: string;
-  ended_at: string;
-  client_app_version: string;
-  device_metadata: DeviceMetadata;
+  deviceId: string;
+  testType: TestType;
+  startedAt: string;
+  endedAt: string;
+  clientAppVersion: string;
+  deviceMetadata: DeviceMetadata;
   events: RawTouchEvent[];
+}
+
+export interface TestSessionSubmissionResponse {
+  id: string;
 }

@@ -16,11 +16,12 @@ Status legend: not started / in progress / done. Update the status line for a ph
 - Explicitly out of scope: Azure provisioning, Kafka, ML/LLM scaffolding.
 
 ## Phase 1 — MVP: Finger Tapping end-to-end
-**Status:** not started
+**Status:** in progress — implementation complete, pending manual on-device verification
 
-- Mobile: tapping test screen, local event capture (touch down/up + timestamp + coords), session buffering, batched submit to API on completion.
-- Backend: ingestion endpoint, payload validation, Prisma writes to `TestSession` + `RawEvent`.
-- DB: Prisma schema for `User` (minimal), `TestSession`, `RawEvent`; migrations.
+- [x] Prisma schema for `User`, `TestSession`, `RawEvent` (camelCase fields, PascalCase enums) + migration — see `decisions/` and `data-model.md`.
+- [x] Backend: `POST /sessions` ingestion endpoint, `class-validator` DTO validation + service-level physical-plausibility checks, atomic Prisma write. Manually verified via curl (201 happy path, 400 on missing field/empty events/absurd event count) and a backend integration test suite (5 passing tests against a real `mino_test` Postgres database).
+- [x] Mobile: tapping test screen (`TappingScreen.tsx`) with fixed 10s session, touch capture via `performance.now()`-relative timestamps, device-id persistence, batched submission to the API. Type-checks and bundles cleanly (web bundle verified).
+- [ ] Manual on-device verification pass (run mobile + API together, perform a real tapping session, confirm completion UI, spot-check DB rows) — see `testing.md`'s Phase 1 checklist; this step needs a person, not automatable.
 - No ML, no LLM, no Kafka, no derived scores.
 - Done when: see `testing.md` for exact criteria.
 
