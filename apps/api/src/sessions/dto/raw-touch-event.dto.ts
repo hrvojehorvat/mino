@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsNumber, Min } from 'class-validator';
+import { IsIn, IsInt, IsNumber, IsOptional, Min } from 'class-validator';
 import type { TouchEventType } from '@mino/shared-types';
 
 export class RawTouchEventDto {
@@ -6,20 +6,23 @@ export class RawTouchEventDto {
   @Min(0)
   seq!: number;
 
-  @IsIn(['touchDown', 'touchUp'])
+  @IsIn(['touchDown', 'touchUp', 'stimulusShown'])
   eventType!: TouchEventType;
 
   @IsInt()
   @Min(0)
   tMs!: number;
 
+  @IsOptional()
   @IsNumber()
-  x!: number;
+  x?: number;
 
+  @IsOptional()
   @IsNumber()
-  y!: number;
+  y?: number;
 
+  @IsOptional()
   @IsInt()
   @Min(0)
-  pointerId!: number;
+  pointerId?: number;
 }

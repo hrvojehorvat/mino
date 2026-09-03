@@ -79,6 +79,41 @@ describe('SessionsController (e2e)', () => {
     ]);
   });
 
+  it('persists a Reaction Time session with a stimulusShown + touchDown pair', async () => {
+    const payload = {
+      ...basePayload,
+      testType: 'reactionTime',
+      events: [
+        { seq: 0, eventType: 'stimulusShown', tMs: 2000 },
+        { seq: 1, eventType: 'touchDown', tMs: 2350 },
+      ],
+    };
+
+    const response = await request(app.getHttpServer())
+      .post('/sessions')
+      .send(payload)
+      .expect(201);
+
+    const sessions = await prisma.testSession.findMany();
+    expect(sessions[0]).toMatchObject({
+      id: response.body.id,
+      testType: 'ReactionTime',
+      status: 'Completed',
+    });
+
+    const events = await prisma.rawEvent.findMany({
+      where: { sessionId: response.body.id },
+      orderBy: { seq: 'asc' },
+    });
+    expect(events.map((e) => e.eventType)).toEqual([
+      'StimulusShown',
+      'TouchDown',
+    ]);
+    expect(events[0].x).toBeNull();
+    expect(events[0].y).toBeNull();
+    expect(events[0].pointerId).toBeNull();
+  });
+
   it('rejects a submission missing deviceId (400)', async () => {
     const { deviceId: _deviceId, ...payloadWithoutDeviceId } = basePayload;
     await request(app.getHttpServer())

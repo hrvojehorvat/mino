@@ -14,7 +14,7 @@ One row per completed (or attempted) test run.
 |---|---|
 | `id` | |
 | `userId` | FK → User |
-| `testType` | enum; MVP only has `FingerTapping` |
+| `testType` | enum; `FingerTapping`, `ReactionTime`, ... |
 | `startedAt` / `endedAt` | |
 | `clientAppVersion` | |
 | `deviceMetadata` | JSON: OS, model — useful for later data-quality analysis |
@@ -30,10 +30,10 @@ The raw time-series table for discrete-event tests (tapping, reaction time, targ
 | `id` | |
 | `sessionId` | FK → TestSession |
 | `seq` | monotonic sequence number within session — don't rely on timestamp ordering alone |
-| `eventType` | `TouchDown` / `TouchUp` |
+| `eventType` | `TouchDown` / `TouchUp` / `StimulusShown` (Reaction Time) / ... |
 | `tMs` | timestamp relative to session start, milliseconds, client-clock |
-| `x`, `y` | |
-| `pointerId` | |
+| `x`, `y` | nullable — only meaningful for touch-position events (`TouchDown`/`TouchUp`); e.g. `StimulusShown` has no position |
+| `pointerId` | nullable — only meaningful for touch events |
 
 **Design decision — relational rows vs blob, for MVP:** store raw events as normalized rows (one row per event) rather than a JSON blob column or object storage. For finger tapping specifically: event count per session is small (tens, not thousands+), it lets you query/inspect raw data trivially with SQL during MVP verification, and it avoids a premature storage abstraction before it's proven necessary.
 

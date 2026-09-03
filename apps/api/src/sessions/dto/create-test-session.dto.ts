@@ -17,7 +17,7 @@ export class CreateTestSessionDto {
   @IsUUID('4')
   deviceId!: string;
 
-  @IsIn(['fingerTapping'])
+  @IsIn(['fingerTapping', 'reactionTime'])
   testType!: TestType;
 
   @IsISO8601()

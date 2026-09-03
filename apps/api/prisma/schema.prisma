@@ -1,4 +1,4 @@
-// Phase 1: finger-tapping MVP. See docs/data-model.md.
+// See docs/data-model.md.
 
 generator client {
   provider = "prisma-client-js"
@@ -11,11 +11,13 @@ datasource db {
 
 enum TestType {
   FingerTapping
+  ReactionTime
 }
 
 enum TouchEventType {
   TouchDown
   TouchUp
+  StimulusShown
 }
 
 enum SessionStatus {
@@ -52,9 +54,9 @@ model RawEvent {
   seq       Int
   eventType TouchEventType
   tMs       Int
-  x         Float
-  y         Float
-  pointerId Int
+  x         Float?
+  y         Float?
+  pointerId Int?
 
   @@unique([sessionId, seq])
   @@index([sessionId])

@@ -1,14 +1,15 @@
-export type TestType = "fingerTapping";
+export type TestType = "fingerTapping" | "reactionTime";
 
-export type TouchEventType = "touchDown" | "touchUp";
+export type TouchEventType = "touchDown" | "touchUp" | "stimulusShown";
 
 export interface RawTouchEvent {
   seq: number;
   eventType: TouchEventType;
   tMs: number;
-  x: number;
-  y: number;
-  pointerId: number;
+  // x/y/pointerId are only meaningful for touchDown/touchUp events.
+  x?: number;
+  y?: number;
+  pointerId?: number;
 }
 
 export interface DeviceMetadata {

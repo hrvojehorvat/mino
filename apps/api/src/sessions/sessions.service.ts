@@ -8,11 +8,13 @@ const T_MS_GRACE_MS = 500;
 
 const testTypeMap: Record<string, TestType> = {
   fingerTapping: TestType.FingerTapping,
+  reactionTime: TestType.ReactionTime,
 };
 
 const eventTypeMap: Record<string, TouchEventType> = {
   touchDown: TouchEventType.TouchDown,
   touchUp: TouchEventType.TouchUp,
+  stimulusShown: TouchEventType.StimulusShown,
 };
 
 @Injectable()
