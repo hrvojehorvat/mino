@@ -15,7 +15,10 @@ def test_processes_an_unprocessed_session(conn, make_session):
     assert rows[0]["sessionId"] == session_id
     assert rows[0]["modelId"] == db.MODEL_ID
     assert rows[0]["modelVersion"] == db.MODEL_VERSION
-    assert rows[0]["metrics"] == {}
+    # No RawEvent rows were inserted, so the real Finger Tapping feature
+    # computation naturally produces a zero-tap result — proving it ran,
+    # not that the pipeline is still Step 1's unconditional placeholder.
+    assert rows[0]["metrics"]["tapCount"] == 0
 
 
 def test_does_not_reprocess_a_session_that_already_has_a_result(conn, make_session):

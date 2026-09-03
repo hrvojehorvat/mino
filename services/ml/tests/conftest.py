@@ -57,3 +57,33 @@ def make_session(conn):
         return session_id
 
     return _make
+
+
+@pytest.fixture
+def insert_events(conn):
+    """Inserts RawEvent rows for a session, in the given order (seq is
+    assigned by list position)."""
+
+    def _insert(session_id: str, events: list[dict]) -> None:
+        with conn.cursor() as cur:
+            for seq, event in enumerate(events):
+                cur.execute(
+                    """
+                    INSERT INTO "RawEvent"
+                        (id, "sessionId", seq, "eventType", "tMs", x, y, "pointerId")
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        str(uuid.uuid4()),
+                        session_id,
+                        seq,
+                        event["eventType"],
+                        event["tMs"],
+                        event.get("x"),
+                        event.get("y"),
+                        event.get("pointerId"),
+                    ),
+                )
+        conn.commit()
+
+    return _insert

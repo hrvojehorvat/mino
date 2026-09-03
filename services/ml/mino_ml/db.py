@@ -18,7 +18,9 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 MODEL_ID = "signal-features"
-MODEL_VERSION = "1"
+# Bump whenever compute_metrics's math changes — old rows stay as history
+# (see docs/data-model.md), the poller just reprocesses under the new version.
+MODEL_VERSION = "2"
 
 
 def _database_url() -> str:

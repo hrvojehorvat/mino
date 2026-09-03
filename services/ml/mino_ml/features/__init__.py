@@ -2,14 +2,21 @@
 by testType. Each module exposes compute(...) -> dict[str, float], a pure
 function of that session's own raw data only.
 
-Phase 3.1: every test type computes an empty placeholder result, proving
-the find -> read -> write pipeline end to end before any real math is
-added in 3.2/3.3.
+Finger Tracing, Phone Stability and Guided Movement still return an empty
+placeholder result — their feature modules land in Step 3.
 """
 
 from __future__ import annotations
 
 from typing import Any
+
+from . import finger_tapping, reaction_time, target_tapping
+
+_EVENT_HANDLERS = {
+    "FingerTapping": finger_tapping.compute,
+    "ReactionTime": reaction_time.compute,
+    "TargetTapping": target_tapping.compute,
+}
 
 
 def compute_metrics(
@@ -20,4 +27,5 @@ def compute_metrics(
     raw_events: list[dict[str, Any]],
     sensor_samples: list[dict[str, Any]] | None,
 ) -> dict[str, Any]:
-    return {}
+    handler = _EVENT_HANDLERS.get(test_type)
+    return handler(raw_events) if handler else {}
