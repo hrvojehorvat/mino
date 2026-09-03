@@ -59,7 +59,7 @@ No Kafka, no ML service, no LLM service, no Azure resources beyond (eventually) 
 - **Mobile (React Native + TypeScript)**: renders test UI, captures raw touch/sensor events client-side, buffers a session, batches and submits to the backend. Never computes scores or talks to ML/LLM directly.
 - **Backend (NestJS + TypeScript)**: auth, session/user management, payload validation, persistence via Prisma, exposes results/history to mobile. Sole gateway to ML/LLM.
 - **Database (PostgreSQL + Prisma)**: stores raw data and derived data in clearly separated tables (see `data-model.md`).
-- **ML (Python)**: reads raw sessions, produces structured, versioned results. Independent, replaceable service — see `decisions/` for how this is enforced.
+- **ML (Python)**: reads raw sessions, produces structured, versioned results. Independent, replaceable service — see `decisions/` for how this is enforced. Lives at `services/ml`, connects to Postgres directly (not through the NestJS API), and runs as a plain polling loop (see `decisions/0006-ml-trigger-mechanism.md`) rather than a queue/broker at this scale.
 - **LLM**: explains ML's structured output in plain language. Never diagnoses, never sees raw data.
 
 See `decisions/` for the specific architectural decisions (monorepo layout, RN workflow, transport, Kafka timing, storage model) and their rationale.

@@ -51,13 +51,35 @@ The raw storage table for continuous accelerometer/gyroscope streams (`PhoneStab
 
 See `decisions/0003-raw-event-storage-model.md` for why this is JSONB rather than row-per-sample or blob storage, and how ingestion is kept storage-agnostic so a later migration stays localized.
 
-## Derived/ML tables (not built until Phase 3/4 — named here for clarity)
+### MLResult
+Structured, versioned output of the Phase 3 ML service (`services/ml`) — one row per (session, model version). Written directly by the Python service via a plain Postgres connection, not through the NestJS API; Prisma still owns the schema/migration for this table (see `decisions/0006-ml-trigger-mechanism.md`).
 
-- **MLFeatureSet** — `id`, `session_id` (FK), `model_id`/`version`, `computed_at`, feature payload.
-- **MLResult** — `id`, `session_id` (FK), `model_id`/`version`, structured result payload (e.g. `{ metric: "tap_consistency", value: 0.82, ... }`), `computed_at`.
+| field | notes |
+|---|---|
+| `id` | |
+| `sessionId` | FK → TestSession |
+| `modelId` | e.g. `"signal-features"` — identifies which computation produced this row |
+| `modelVersion` | version of that computation, bumped when the math changes |
+| `metrics` | JSON, test-type-specific `{ metric: value }` payload — see below for what each test type computes |
+| `computedAt` | |
+
+`(sessionId, modelId, modelVersion)` is unique — reprocessing a session under the same model/version is a no-op-by-construction, and a version bump just adds new rows next to the old ones rather than overwriting, keeping every past result reproducible.
+
+**What `metrics` contains, per test type** (Phase 3 scope — plain descriptive statistics, never a diagnostic label):
+- `fingerTapping`: tap count, inter-tap-interval mean/median/SD/coefficient-of-variation, mean tap duration, tap rate, fatigue slope.
+- `reactionTime`: per-trial RT mean/median/SD/coefficient-of-variation, fastest RT, lapse count.
+- `targetTapping`: hit accuracy (touch-to-target distance), movement time mean/SD.
+- `fingerTracing`: path deviation mean/max, completion time, smoothness (mean jerk).
+- `phoneStability`: gravity-removed acceleration RMS, dominant frequency + power (FFT/PSD), gyroscope RMS.
+- `guidedMovement`: per-prompt response latency, peak angular velocity, directional correctness.
+
+There is no `MLFeatureSet` table — an earlier draft of this doc sketched features and results as two separate tables, but Phase 3 has no second consumer that needs "features" distinct from "results" (the computation *is* the result), so they were collapsed into the one `MLResult` table above rather than building a speculative split. Revisit only if a real second consumer of raw features (distinct from the computed metrics) shows up.
+
+## Derived/LLM tables (not built until Phase 4 — named here for clarity)
+
 - **LLMExplanation** — `id`, `ml_result_id` (FK), `explanation_text`, model/prompt version, `generated_at`.
 
-These are explicitly separate tables from `RawEvent`, never derived-in-place or mixed into it, so raw data stays untouched and replayable no matter how many times ML models are re-run or replaced — a model version bump just adds new rows referencing the same immutable raw session.
+Kept explicitly separate from `RawEvent`/`SensorSession`, never derived-in-place or mixed into them, so raw data stays untouched and replayable no matter how many times ML models are re-run or replaced — a model version bump just adds new `MLResult` rows referencing the same immutable raw session.
 
 ## MVP scope boundary
 

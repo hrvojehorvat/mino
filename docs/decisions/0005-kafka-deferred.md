@@ -1,6 +1,6 @@
 # 0005 — Kafka deferred until actually needed
 
-**Status:** proposed
+**Status:** resolved — see `decisions/0006-ml-trigger-mechanism.md` (polling, not Kafka, not yet a queue)
 
 ## Context
 CLAUDE.md is explicit: use Kafka only where async/event-driven processing is actually useful, not by default. Ingestion for Phase 0-2 is a synchronous request/response write to Postgres — there is no real async processing need yet.
