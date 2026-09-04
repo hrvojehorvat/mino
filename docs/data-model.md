@@ -52,7 +52,7 @@ The raw storage table for continuous accelerometer/gyroscope streams (`PhoneStab
 See `decisions/0003-raw-event-storage-model.md` for why this is JSONB rather than row-per-sample or blob storage, and how ingestion is kept storage-agnostic so a later migration stays localized.
 
 ### MLResult
-Structured, versioned output of the Phase 3 ML service (`services/ml`) — one row per (session, model version). Written directly by the Python service via a plain Postgres connection, not through the NestJS API; Prisma still owns the schema/migration for this table (see `decisions/0006-ml-trigger-mechanism.md`).
+Structured, versioned output of the Phase 3 ML service (`services/ml`) — one row per (session, model version). Written by the NestJS API via Prisma, like every other table — `services/ml` is a stateless HTTP service with no database access; the backend calls it and saves the result itself (see `decisions/0006-ml-trigger-mechanism.md`).
 
 | field | notes |
 |---|---|

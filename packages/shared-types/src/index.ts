@@ -96,3 +96,31 @@ export interface TestBatchSummary {
   createdAt: string;
   sessionCount: number;
 }
+
+// Structured output of the Phase 3 ML service (services/ml) for one session
+// — see MLResult in the Prisma schema. metrics' shape varies by test type.
+export interface MLResultSummary {
+  modelId: string;
+  modelVersion: string;
+  metrics: Record<string, unknown>;
+  computedAt: string;
+}
+
+export interface TestBatchSessionDetail {
+  id: string;
+  testType: TestType;
+  status: string;
+  startedAt: string;
+  // Null until the backend has computed a result for this session (on
+  // demand or via its background sweep) — the app polls GET /batches/:id
+  // again after a short delay until every session has a result (or gives
+  // up after a bounded number of attempts).
+  mlResult: MLResultSummary | null;
+}
+
+export interface TestBatchDetail {
+  id: string;
+  name: string | null;
+  createdAt: string;
+  sessions: TestBatchSessionDetail[];
+}

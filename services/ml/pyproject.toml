@@ -4,8 +4,7 @@ version = "0.1.0"
 description = "Mino Phase 3 ML service — turns raw session data into structured metrics"
 requires-python = ">=3.11"
 dependencies = [
-    "psycopg[binary]>=3.2",
-    "python-dotenv>=1.0",
+    "flask>=3.0",
     "numpy>=1.26",
     "scipy>=1.11",
 ]

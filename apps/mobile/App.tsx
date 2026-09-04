@@ -10,6 +10,7 @@ import PhoneStabilityScreen from './src/PhoneStabilityScreen';
 import GuidedMovementScreen from './src/GuidedMovementScreen';
 import BatchPickerScreen from './src/BatchPickerScreen';
 import BatchHistoryScreen from './src/BatchHistoryScreen';
+import BatchDetailScreen from './src/BatchDetailScreen';
 import { ErrorBoundary } from './src/ErrorBoundary';
 
 const TEST_LABELS: Record<TestType, string> = {
@@ -24,6 +25,7 @@ const TEST_LABELS: Record<TestType, string> = {
 type Mode =
   | { screen: 'picker' }
   | { screen: 'history' }
+  | { screen: 'batchDetail'; batchId: string }
   | { screen: 'running'; batchId: string; tests: TestType[]; index: number }
   | { screen: 'batchComplete'; count: number };
 
@@ -47,7 +49,22 @@ export default function App() {
   if (mode.screen === 'history') {
     return (
       <>
-        <BatchHistoryScreen onBack={() => setMode({ screen: 'picker' })} />
+        <BatchHistoryScreen
+          onBack={() => setMode({ screen: 'picker' })}
+          onOpenBatch={(batchId) => setMode({ screen: 'batchDetail', batchId })}
+        />
+        <StatusBar style="auto" />
+      </>
+    );
+  }
+
+  if (mode.screen === 'batchDetail') {
+    return (
+      <>
+        <BatchDetailScreen
+          batchId={mode.batchId}
+          onBack={() => setMode({ screen: 'history' })}
+        />
         <StatusBar style="auto" />
       </>
     );

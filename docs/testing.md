@@ -42,6 +42,8 @@ This keeps verification proportionate to MVP scope: a real integration test wher
 
 **Testing approach:** unit tests carry the actual correctness bar (exact hand-computed numbers), integration tests prove the pipeline wiring end-to-end (DB → poller → saved row), and a final manual pass against real dev-DB data is the gate before calling a step done — synthetic fixtures alone missed real data-quality issues twice this phase (see `lessons.md`).
 
+**Update (post-Phase 3.5):** `services/ml` was later reworked into a stateless Flask HTTP service with no database access at all — the DB-orchestration logic ("find pending sessions, load raw data, save a result") and its integration test moved into `apps/api` (`MlService`), triggered on demand and by a background sweep instead of a standalone poller (see `decisions/0006-ml-trigger-mechanism.md`, Update 3). `services/ml`'s own test suite is now pure unit tests on `compute()` plus a Flask-endpoint smoke test; the DB-round-trip proof above now lives in `apps/api`'s e2e suite (`batches.e2e-spec.ts`).
+
 ## Phase 3.5 — Test batches
 
 **Definition of done:**

@@ -13,9 +13,10 @@ import { getOrCreateDeviceId } from './deviceId';
 
 interface Props {
   onBack: () => void;
+  onOpenBatch: (batchId: string) => void;
 }
 
-export default function BatchHistoryScreen({ onBack }: Props) {
+export default function BatchHistoryScreen({ onBack, onOpenBatch }: Props) {
   const [batches, setBatches] = useState<TestBatchSummary[] | null>(null);
   const [error, setError] = useState(false);
 
@@ -68,13 +69,13 @@ export default function BatchHistoryScreen({ onBack }: Props) {
           data={batches}
           keyExtractor={(batch) => batch.id}
           renderItem={({ item }) => (
-            <View style={styles.row}>
+            <Pressable style={styles.row} onPress={() => onOpenBatch(item.id)}>
               <Text style={styles.rowTitle}>{item.name ?? 'Untitled batch'}</Text>
               <Text style={styles.rowSubtitle}>
                 {new Date(item.createdAt).toLocaleString()} ·{' '}
                 {item.sessionCount} test{item.sessionCount === 1 ? '' : 's'}
               </Text>
-            </View>
+            </Pressable>
           )}
         />
       )}

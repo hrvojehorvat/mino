@@ -38,7 +38,7 @@ Status legend: not started / in progress / done. Update the status line for a ph
 ## Phase 3 — ML pipeline v1
 **Status:** done
 
-- [x] `services/ml` Python service: polls Postgres every 30s for sessions with no `MLResult` row yet under the current model/version, computes metrics, saves a row — no Kafka/queue, per `decisions/0005-kafka-deferred.md`.
+- [x] `services/ml` Python service: computes metrics for one session's raw data and returns them — a stateless Flask endpoint, no database access. `apps/api` finds sessions with no `MLResult` row yet under the current model/version, calls `services/ml`, and saves the row itself — triggered on demand (viewing a batch) and by a 30s background sweep. No Kafka/queue in between, per `decisions/0005-kafka-deferred.md` and `decisions/0006-ml-trigger-mechanism.md` (Update 3).
 - [x] `MLResult` table (Prisma migration) with a `(sessionId, modelId, modelVersion)` uniqueness convention — a math change bumps `modelVersion` rather than overwriting old rows, keeping every past result reproducible. See `data-model.md`.
 - [x] Real statistical/signal-processing features for all six test types: tap timing/consistency/fatigue (Finger Tapping), reaction speed/consistency/lapses (Reaction Time), tap accuracy/speed (Target Tapping), path deviation/smoothness (Finger Tracing), shake amplitude/frequency (Phone Stability), prompt response latency/peak/direction (Guided Movement).
 - [x] Unit tests (hand-computed synthetic fixtures) and integration tests (real `mino_test` Postgres) for every feature module; verified against real captured dev-DB sessions for every test type.

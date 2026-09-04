@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { BatchesService } from './batches.service.js';
 import { CreateTestBatchDto } from './dto/create-test-batch.dto.js';
 import { ListTestBatchesDto } from './dto/list-test-batches.dto.js';
@@ -15,5 +15,10 @@ export class BatchesController {
   @Get()
   findAll(@Query() query: ListTestBatchesDto) {
     return this.batchesService.findAllForDevice(query.deviceId);
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string, @Query() query: ListTestBatchesDto) {
+    return this.batchesService.findOneForDevice(id, query.deviceId);
   }
 }

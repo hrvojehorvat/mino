@@ -40,6 +40,7 @@ describe('BatchesController (e2e)', () => {
     await app.init();
 
     prisma = app.get(PrismaService);
+    await prisma.mLResult.deleteMany();
     await prisma.rawEvent.deleteMany();
     await prisma.sensorSession.deleteMany();
     await prisma.testSession.deleteMany();
@@ -125,5 +126,90 @@ describe('BatchesController (e2e)', () => {
       .post('/sessions')
       .send(sessionPayload('does-not-exist'))
       .expect(400);
+  });
+
+  it('computes a pending result on demand instead of only relying on the background sweep (GET /batches/:id)', async () => {
+    const batch = await request(app.getHttpServer())
+      .post('/batches')
+      .send({ deviceId, name: 'Morning check-in' })
+      .expect(201);
+
+    const session = await request(app.getHttpServer())
+      .post('/sessions')
+      .send(sessionPayload(batch.body.id))
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .get(`/batches/${batch.body.id}`)
+      .query({ deviceId })
+      .expect(200);
+
+    expect(response.body).toMatchObject({
+      id: batch.body.id,
+      name: 'Morning check-in',
+      sessions: [
+        {
+          id: session.body.id,
+          testType: 'fingerTapping',
+          status: 'Completed',
+          mlResult: {
+            modelId: 'signal-features',
+            modelVersion: '2',
+          },
+        },
+      ],
+    });
+    expect(response.body.sessions[0].mlResult.metrics).toBeDefined();
+  });
+
+  it('includes the mlResult once services/ml has computed one (GET /batches/:id)', async () => {
+    const batch = await request(app.getHttpServer())
+      .post('/batches')
+      .send({ deviceId })
+      .expect(201);
+
+    const session = await request(app.getHttpServer())
+      .post('/sessions')
+      .send(sessionPayload(batch.body.id))
+      .expect(201);
+
+    await prisma.mLResult.create({
+      data: {
+        sessionId: session.body.id,
+        modelId: 'signal-features',
+        modelVersion: '2',
+        metrics: { meanIntervalMs: 133.4 },
+      },
+    });
+
+    const response = await request(app.getHttpServer())
+      .get(`/batches/${batch.body.id}`)
+      .query({ deviceId })
+      .expect(200);
+
+    expect(response.body.sessions[0].mlResult).toMatchObject({
+      modelId: 'signal-features',
+      modelVersion: '2',
+      metrics: { meanIntervalMs: 133.4 },
+    });
+  });
+
+  it('returns 404 for an unknown batch id (GET /batches/:id)', async () => {
+    await request(app.getHttpServer())
+      .get('/batches/does-not-exist')
+      .query({ deviceId })
+      .expect(404);
+  });
+
+  it('returns 404 for a batch belonging to a different device (GET /batches/:id)', async () => {
+    const batch = await request(app.getHttpServer())
+      .post('/batches')
+      .send({ deviceId })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .get(`/batches/${batch.body.id}`)
+      .query({ deviceId: '33333333-3333-4333-8333-333333333333' })
+      .expect(404);
   });
 });

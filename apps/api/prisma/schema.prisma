@@ -102,8 +102,9 @@ model SensorSession {
 }
 
 // Structured, versioned output of the Phase 3 ML service (services/ml) —
-// one row per (session, model version). Written directly by the Python
-// service, not by the NestJS API. See decisions/0006 and data-model.md.
+// one row per (session, model version). Written by the NestJS API via
+// Prisma; services/ml is a stateless HTTP service with no DB access. See
+// decisions/0006 and data-model.md.
 model MLResult {
   id           String      @id @default(cuid())
   sessionId    String
