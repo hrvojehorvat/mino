@@ -8,7 +8,11 @@ here should require it just to import this module.
 
 from __future__ import annotations
 
-MODEL_NAME = "meta-llama/Llama-3.1-8B-Instruct"
+import os
+
+# Overridable so the same guardrail/prompt/Flask code can be deployed against
+# a different instruct model (e.g. modal_app_mistral.py) without duplicating it.
+MODEL_NAME = os.environ.get("MINO_LLM_MODEL_NAME", "meta-llama/Llama-3.1-8B-Instruct")
 
 _llm = None
 
