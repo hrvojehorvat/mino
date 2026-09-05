@@ -41,6 +41,14 @@ export class MlService {
       include: PENDING_SESSION_INCLUDE,
     });
 
+    if (sessions.length === 0) {
+      return;
+    }
+
+    this.logger.log(
+      `on-demand: batch ${batchId} has ${sessions.length} pending session(s): ${sessions.map((s) => s.id).join(', ')}`,
+    );
+
     await Promise.all(sessions.map((session) => this.computeAndSave(session)));
   }
 
@@ -57,6 +65,14 @@ export class MlService {
       where: this.pendingWhere(),
       include: PENDING_SESSION_INCLUDE,
     });
+
+    if (sessions.length === 0) {
+      return;
+    }
+
+    this.logger.log(
+      `sweep: ${sessions.length} pending session(s) system-wide: ${sessions.map((s) => s.id).join(', ')}`,
+    );
 
     for (let i = 0; i < sessions.length; i += SWEEP_CONCURRENCY) {
       const chunk = sessions.slice(i, i + SWEEP_CONCURRENCY);
@@ -105,6 +121,7 @@ export class MlService {
           metrics: metrics as Prisma.InputJsonValue,
         },
       });
+      this.logger.log(`computed session ${session.id} (${session.testType})`);
     } catch (err) {
       // Unique violation: the on-demand path and the background sweep both
       // picked up the same session in the small window before either
@@ -114,6 +131,9 @@ export class MlService {
         err instanceof Prisma.PrismaClientKnownRequestError &&
         err.code === 'P2002'
       ) {
+        this.logger.log(
+          `session ${session.id} already has a result, skipping duplicate write`,
+        );
         return;
       }
       throw err;
