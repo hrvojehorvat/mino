@@ -32,6 +32,8 @@ export default function BatchDetailScreen({ batchId, onBack }: Props) {
   const [detail, setDetail] = useState<TestBatchDetail | null>(null);
   const [error, setError] = useState(false);
   const [gaveUp, setGaveUp] = useState(false);
+  const [explaining, setExplaining] = useState(false);
+  const [explainError, setExplainError] = useState(false);
   const attemptsRef = useRef(0);
 
   useEffect(() => {
@@ -78,6 +80,37 @@ export default function BatchDetailScreen({ batchId, onBack }: Props) {
 
   const stillProcessing =
     detail !== null && detail.sessions.some((s) => s.mlResult === null);
+  const allComputed =
+    detail !== null && detail.sessions.every((s) => s.mlResult !== null);
+
+  const requestExplanation = async () => {
+    if (detail === null) return;
+    setExplaining(true);
+    setExplainError(false);
+
+    try {
+      const deviceId = await getOrCreateDeviceId();
+      const response = await fetch(
+        `${API_BASE_URL}/batches/${batchId}/explain`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deviceId }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed with status ${response.status}`);
+      }
+
+      const llmExplanation = await response.json();
+      setDetail((prev) => (prev ? { ...prev, llmExplanation } : prev));
+    } catch {
+      setExplainError(true);
+    } finally {
+      setExplaining(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -125,6 +158,44 @@ export default function BatchDetailScreen({ batchId, onBack }: Props) {
             <View style={styles.waitingRow}>
               <ActivityIndicator />
               <Text style={styles.subtitle}>Waiting for results...</Text>
+            </View>
+          )}
+
+          {allComputed && detail.llmExplanation && (
+            <View style={styles.explanationCard}>
+              <Text style={styles.explanationTitle}>What this shows</Text>
+              <Text style={styles.explanationText}>
+                {detail.llmExplanation.text}
+              </Text>
+            </View>
+          )}
+
+          {allComputed && !detail.llmExplanation && !explaining && (
+            <Pressable
+              style={styles.explainButton}
+              onPress={requestExplanation}
+            >
+              <Text style={styles.explainButtonText}>
+                Explain these results
+              </Text>
+            </Pressable>
+          )}
+
+          {explaining && (
+            <View style={styles.waitingRow}>
+              <ActivityIndicator />
+              <Text style={styles.subtitle}>Generating explanation...</Text>
+            </View>
+          )}
+
+          {explainError && (
+            <View style={styles.explainErrorRow}>
+              <Text style={styles.subtitle}>
+                Couldn't generate an explanation. Try again?
+              </Text>
+              <Pressable onPress={requestExplanation}>
+                <Text style={styles.retryText}>Retry</Text>
+              </Pressable>
             </View>
           )}
         </ScrollView>
@@ -198,5 +269,43 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#888',
     fontStyle: 'italic',
+  },
+  explanationCard: {
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: '#f2f6ff',
+    gap: 6,
+  },
+  explanationTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1e3a8a',
+  },
+  explanationText: {
+    fontSize: 15,
+    lineHeight: 21,
+    color: '#333',
+  },
+  explainButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#3b82f6',
+    alignItems: 'center',
+  },
+  explainButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  explainErrorRow: {
+    marginTop: 12,
+    gap: 6,
+  },
+  retryText: {
+    fontSize: 15,
+    color: '#3b82f6',
+    fontWeight: '600',
   },
 });
