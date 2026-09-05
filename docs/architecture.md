@@ -3,44 +3,45 @@
 ## Long-term system architecture
 
 ```
-┌─────────────────────────┐
-│   Mobile App (RN + TS)  │  - Renders test UI, captures raw touch/sensor events
+┌──────────────────────────┐
+│   Mobile App (RN + TS)   │  - Renders test UI, captures raw touch/sensor events
 │                          │  - Buffers a session locally, batches to backend
 └────────────┬─────────────┘
              │ HTTPS (batched JSON, authenticated)
-┌────────────▼─────────────┐
-│  Backend API (NestJS)    │  - AuthN/AuthZ, session/user management
+             ▼
+┌──────────────────────────┐
+│   Backend API (NestJS)   │  - AuthN/AuthZ, session/user management
 │                          │  - Validates & persists raw session payloads
-│                          │  - Exposes results/history to mobile
-└────────────┬─────────────┘
-             │
-     ┌───────▼────────┐        ┌─────────────────────┐
-     │  PostgreSQL     │◄──────►│ ML Service (Python) │  batch/async job(s)
-     │  (raw + derived │  reads  │ - reads raw sessions │
-     │   tables)        │  raw,  │ - produces structured │
-     │                  │  writes│   results/features    │
-     │                  │  derived│ - versioned models    │
-     └────────┬─────────┘        └───────────┬──────────┘
-              │                               │
-              │                    ┌──────────▼──────────┐
-              │                    │  LLM Explanation      │
-              │                    │  Service               │
-              │                    │  - consumes ONLY       │
-              │                    │    structured ML output│
-              │                    │  - produces plain-      │
-              │                    │    language explanation │
-              │                    │  - guardrails: no        │
-              │                    │    diagnosis language    │
-              │                    └──────────┬──────────┘
-              │                                │
-              └───────────► Backend API ◄──────┘
-                                   │
-                          returned to Mobile App
+│                          │  - Sole gateway to ML/LLM; exposes results/history
+│                          │    to mobile
+└──┬───────────────────┬───┘
+   │ Prisma             │ synchronous HTTP: POST /compute, on demand
+   ▼                    │ (viewing a batch) or via a background sweep
+┌─────────────┐         ▼
+│ PostgreSQL   │   ┌──────────────────────────┐
+│ (raw +       │   │  ML Service (Python)     │  - stateless Flask HTTP
+│  derived     │   │                          │  - POST /compute: raw data in,
+│  tables)     │   │                          │    structured metrics out
+└─────────────┘   │                          │  - no database access at all
+                    └──────────────────────────┘
+                    Backend saves the returned metrics as MLResult —
+                    it's the only thing that ever writes that table.
+
+The LLM Explanation Service (Phase 4, not yet built) is called by the
+backend the same way — synchronous HTTP to a stateless service — and its
+result is relayed back to mobile:
+
+┌──────────────────────────┐
+│  LLM Explanation Service │  - consumes ONLY structured MLResult rows,
+│                          │    never raw session data
+│                          │  - produces a plain-language explanation
+│                          │  - guardrails: no diagnostic/medical language
+└──────────────────────────┘
 ```
 
 Key properties this architecture preserves, per CLAUDE.md's separation-of-concerns principle:
 
-- **ML is a separate service/process**, invoked asynchronously (batch or queue-triggered), never inline in the main API's request path. It reads raw data and writes back structured, versioned results — it does not become part of the NestJS app.
+- **ML is a separate, stateless service**, called over plain HTTP — never inline logic in the main API's request path, and never given database access. The backend reads raw data, calls it, and writes back the structured, versioned result itself — see `decisions/0006-ml-trigger-mechanism.md` for why this is a direct call rather than a queue/broker.
 - **LLM sits downstream of ML only** — it never touches raw sensor data or makes its own inferences from numbers; it explains what ML already concluded. This is enforced architecturally (the LLM service's only input contract is the `MLResult` schema), not just by prompt instruction — that's the real guardrail against diagnostic claims.
 - **Backend is the sole gateway** — mobile never talks to ML or LLM directly. Keeps auth, versioning, and rate-limiting in one place, and keeps ML/LLM freely replaceable without touching the mobile app.
 

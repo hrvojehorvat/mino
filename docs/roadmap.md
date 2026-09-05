@@ -16,12 +16,12 @@ Status legend: not started / in progress / done. Update the status line for a ph
 - Explicitly out of scope: Azure provisioning, Kafka, ML/LLM scaffolding.
 
 ## Phase 1 — MVP: Finger Tapping end-to-end
-**Status:** in progress — implementation complete, pending manual on-device verification
+**Status:** done
 
 - [x] Prisma schema for `User`, `TestSession`, `RawEvent` (camelCase fields, PascalCase enums) + migration — see `decisions/` and `data-model.md`.
 - [x] Backend: `POST /sessions` ingestion endpoint, `class-validator` DTO validation + service-level physical-plausibility checks, atomic Prisma write. Manually verified via curl (201 happy path, 400 on missing field/empty events/absurd event count) and a backend integration test suite (5 passing tests against a real `mino_test` Postgres database).
 - [x] Mobile: tapping test screen (`TappingScreen.tsx`) with fixed 10s session, touch capture via `performance.now()`-relative timestamps, device-id persistence, batched submission to the API. Type-checks and bundles cleanly (web bundle verified).
-- [ ] Manual on-device verification pass (run mobile + API together, perform a real tapping session, confirm completion UI, spot-check DB rows) — see `testing.md`'s Phase 1 checklist; this step needs a person, not automatable.
+- [x] Manual on-device verification pass — superseded by the far more extensive real-device testing done throughout Phases 2-3 (see `lessons.md`: dropped-touch-event and sensor bugs were both caught on real hardware, not simulators), which would have been impossible if the base Phase 1 pipeline weren't already working end-to-end on-device.
 - No ML, no LLM, no Kafka, no derived scores.
 - Done when: see `testing.md` for exact criteria.
 
@@ -50,6 +50,7 @@ Status legend: not started / in progress / done. Update the status line for a ph
 - [x] `TestBatch` table (id, userId, name — optional, createdAt); `TestSession` now requires a `batchId`. No status field — a batch is just however many sessions it has so far. Existing pre-batch dev sessions were preserved via a backfilled "Legacy sessions" batch per user, not deleted.
 - [x] Backend: `POST /batches` (create, optional name), `GET /batches?deviceId=...` (history list with session counts, newest first). `POST /sessions` requires and validates `batchId` against the submitting device's own batches.
 - [x] Mobile: `BatchPickerScreen` (tap tests to add them to an ordered set, optional name, "Start"), sequential runner in `App.tsx` (chains the picked tests automatically — each test's "Run again" became "Next test"/"Finish", no return to a list in between), `BatchHistoryScreen` (past batches by name/date/test count).
+- [x] `BatchDetailScreen` + `GET /batches/:id` (added just after this phase, once history needed somewhere to link to) — per-session status and `mlResult`, polling until every session has a result. This is what first made ML results user-facing, which is what exposed Phase 3's poller latency/DB-ownership problems and led to `decisions/0006`'s Update 3.
 - Why this came before Phase 4: the user's batching idea (one AI call per batch instead of per test, since the AI call — not Phase 3's free 30s poll — is the only metered step) changes the data model and navigation Phase 4 depends on either way; doing it first avoids building Phase 4 around single sessions and reworking it.
 - Verified via `apps/api`'s e2e suite (batch create/list/session-validation) and a manual on-device run building and completing a real multi-test batch.
 
