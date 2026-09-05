@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { TestType as PrismaTestType } from '@prisma/client';
 import type { TestType } from '@mino/shared-types';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { LlmService, LLMExplanationSummary } from '../llm/llm.service.js';
 import { MlService } from '../ml/ml.service.js';
 import { CreateTestBatchDto } from './dto/create-test-batch.dto.js';
 
@@ -32,6 +33,7 @@ export interface TestBatchDetail {
   name: string | null;
   createdAt: string;
   sessions: TestBatchSessionDetail[];
+  llmExplanation: LLMExplanationSummary | null;
 }
 
 const testTypeFromPrisma: Record<PrismaTestType, TestType> = {
@@ -48,6 +50,7 @@ export class BatchesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mlService: MlService,
+    private readonly llmService: LlmService,
   ) {}
 
   async create(dto: CreateTestBatchDto): Promise<{ id: string }> {
@@ -105,6 +108,22 @@ export class BatchesService {
     return detail;
   }
 
+  async explainForDevice(
+    id: string,
+    deviceId: string,
+  ): Promise<LLMExplanationSummary> {
+    const user = await this.prisma.user.findUnique({ where: { deviceId } });
+    const batch = user
+      ? await this.prisma.testBatch.findUnique({ where: { id } })
+      : null;
+
+    if (!batch || batch.userId !== user?.id) {
+      throw new NotFoundException('batch not found');
+    }
+
+    return this.llmService.generateExplanation(id);
+  }
+
   private async loadDetail(
     id: string,
     deviceId: string,
@@ -124,6 +143,10 @@ export class BatchesService {
                 },
               },
             },
+            explanations: {
+              orderBy: { generatedAt: 'desc' },
+              take: 1,
+            },
           },
         })
       : null;
@@ -132,10 +155,18 @@ export class BatchesService {
       throw new NotFoundException('batch not found');
     }
 
+    const [llmExplanation] = batch.explanations;
+
     return {
       id: batch.id,
       name: batch.name,
       createdAt: batch.createdAt.toISOString(),
+      llmExplanation: llmExplanation
+        ? {
+            text: llmExplanation.explanationText,
+            generatedAt: llmExplanation.generatedAt.toISOString(),
+          }
+        : null,
       sessions: batch.sessions.map((session) => {
         const [mlResult] = session.mlResults;
 

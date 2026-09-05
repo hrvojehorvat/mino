@@ -45,22 +45,23 @@ model User {
 // the same thing. No status field: a batch is just however many sessions it
 // has so far, nothing else to track.
 model TestBatch {
-  id        String        @id @default(cuid())
-  userId    String
-  user      User          @relation(fields: [userId], references: [id])
-  name      String?
-  createdAt DateTime      @default(now())
-  sessions  TestSession[]
+  id           String           @id @default(cuid())
+  userId       String
+  user         User             @relation(fields: [userId], references: [id])
+  name         String?
+  createdAt    DateTime         @default(now())
+  sessions     TestSession[]
+  explanations LLMExplanation[]
 
   @@index([userId])
 }
 
 model TestSession {
-  id               String        @id @default(cuid())
+  id               String         @id @default(cuid())
   userId           String
-  user             User          @relation(fields: [userId], references: [id])
+  user             User           @relation(fields: [userId], references: [id])
   batchId          String
-  batch            TestBatch     @relation(fields: [batchId], references: [id])
+  batch            TestBatch      @relation(fields: [batchId], references: [id])
   testType         TestType
   startedAt        DateTime
   endedAt          DateTime
@@ -116,4 +117,25 @@ model MLResult {
 
   @@unique([sessionId, modelId, modelVersion])
   @@index([sessionId])
+}
+
+// Plain-language explanation of a batch's MLResult metrics, from the Phase 4
+// LLM service (services/llm-explain) — one row per (batch, model version),
+// same reproducibility idiom as MLResult. One row per *batch*, not per
+// session: the whole reason TestBatch exists is to make one AI call cover
+// every session in it, since (unlike Phase 3's free statistics) an LLM call
+// is the one step that actually costs compute. Written by the NestJS API;
+// services/llm-explain is a stateless HTTP service with no DB access. See
+// decisions/0007-llm-hosting-and-guardrail.md.
+model LLMExplanation {
+  id              String    @id @default(cuid())
+  batchId         String
+  batch           TestBatch @relation(fields: [batchId], references: [id])
+  modelId         String
+  modelVersion    String
+  explanationText String
+  generatedAt     DateTime  @default(now())
+
+  @@unique([batchId, modelId, modelVersion])
+  @@index([batchId])
 }

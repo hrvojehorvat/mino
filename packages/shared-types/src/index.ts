@@ -118,9 +118,19 @@ export interface TestBatchSessionDetail {
   mlResult: MLResultSummary | null;
 }
 
+// Plain-language explanation of this batch's results, from the Phase 4 LLM
+// service (services/llm-explain) — see LLMExplanation in the Prisma schema.
+// Null until the user explicitly requests one (POST /batches/:id/explain);
+// unlike mlResult, this is never generated automatically.
+export interface LLMExplanationSummary {
+  text: string;
+  generatedAt: string;
+}
+
 export interface TestBatchDetail {
   id: string;
   name: string | null;
   createdAt: string;
   sessions: TestBatchSessionDetail[];
+  llmExplanation: LLMExplanationSummary | null;
 }

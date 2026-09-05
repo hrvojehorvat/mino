@@ -21,4 +21,9 @@ export class BatchesController {
   findOne(@Param('id') id: string, @Query() query: ListTestBatchesDto) {
     return this.batchesService.findOneForDevice(id, query.deviceId);
   }
+
+  @Post(':id/explain')
+  explain(@Param('id') id: string, @Body() body: ListTestBatchesDto) {
+    return this.batchesService.explainForDevice(id, body.deviceId);
+  }
 }
