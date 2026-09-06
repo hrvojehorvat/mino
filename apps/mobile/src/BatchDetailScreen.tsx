@@ -20,6 +20,20 @@ const TEST_LABELS: Record<TestType, string> = {
   guidedMovement: 'Guided Movement',
 };
 
+// A metric being anomalous vs. the user's own history is not itself good or
+// bad news — direction is looked up deterministically in services/ml (see
+// METRIC_DIRECTION), never guessed here. `favorable` is only meaningful when
+// isAnomalous is true.
+function baselineNote(favorable: boolean | null): { text: string; style: object } {
+  if (favorable === true) {
+    return { text: 'Better than your usual', style: styles.baselineFavorable };
+  }
+  if (favorable === false) {
+    return { text: 'Worth keeping an eye on', style: styles.baselineUnfavorable };
+  }
+  return { text: 'Different from your usual', style: styles.baselineNeutral };
+}
+
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 20;
 
@@ -140,11 +154,25 @@ export default function BatchDetailScreen({ batchId, onBack }: Props) {
 
               {session.mlResult ? (
                 <View style={styles.metrics}>
-                  {Object.entries(session.mlResult.metrics).map(([key, value]) => (
-                    <Text key={key} style={styles.metricRow}>
-                      {key}: {String(value)}
-                    </Text>
-                  ))}
+                  {Object.entries(session.mlResult.metrics).map(([key, value]) => {
+                    const baselineMetric = session.baseline?.metrics[key];
+                    const note =
+                      baselineMetric && baselineMetric.isAnomalous
+                        ? baselineNote(baselineMetric.favorable)
+                        : null;
+                    return (
+                      <View key={key} style={styles.metricRowContainer}>
+                        <Text style={styles.metricRow}>
+                          {key}: {String(value)}
+                        </Text>
+                        {note && (
+                          <Text style={[styles.baselineNoteText, note.style]}>
+                            {note.text}
+                          </Text>
+                        )}
+                      </View>
+                    );
+                  })}
                 </View>
               ) : (
                 <Text style={styles.processing}>
@@ -260,9 +288,28 @@ const styles = StyleSheet.create({
     marginTop: 6,
     gap: 2,
   },
+  metricRowContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
   metricRow: {
     fontSize: 14,
     color: '#333',
+  },
+  baselineNoteText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  baselineFavorable: {
+    color: '#15803d',
+  },
+  baselineUnfavorable: {
+    color: '#b45309',
+  },
+  baselineNeutral: {
+    color: '#6b7280',
   },
   processing: {
     marginTop: 6,
