@@ -9,6 +9,9 @@ export default function TappingScreen({ batchId, onDone, nextLabel }: TestScreen
     batchId,
     durationMs: SESSION_DURATION_MS,
   });
+  // useTestSession's eventCount is raw touchDown+touchUp events (the
+  // down/up timing pairs this test exists to capture) — a tap is one pair.
+  const tapCount = Math.floor(eventCount / 2);
 
   const recordTouch = (eventType: 'touchDown' | 'touchUp') => (
     e: GestureResponderEvent,
@@ -42,7 +45,7 @@ export default function TappingScreen({ batchId, onDone, nextLabel }: TestScreen
       <View style={styles.container}>
         <View style={styles.content}>
           <Text style={styles.timer}>{secondsLeft}s</Text>
-          <Text style={styles.subtitle}>Taps: {eventCount}</Text>
+          <Text style={styles.subtitle}>Taps: {tapCount}</Text>
           <Pressable
             style={styles.target}
             onPressIn={recordTouch('touchDown')}
