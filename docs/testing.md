@@ -67,6 +67,8 @@ This keeps verification proportionate to MVP scope: a real integration test wher
 
 **Not yet done, called out explicitly rather than silently skipped:** `test_app.py`'s real-model eval set hasn't been run since the guardrail moved from "ban diagnostic language" to "require a disclaimer alongside it" — worth doing before trusting the new policy under inputs designed to break it, not just the manual spot-check done so far.
 
+**Manual testing without spending Modal credits:** `services/llm-explain/mino_llm/dev_stub.py` is a stdlib-only local server implementing the same `/health`/`/explain` contract as the real service, but always returning one fixed canned explanation instead of calling a model. Run it with `python3 -m mino_llm.dev_stub` from `services/llm-explain/` (no `uv`/vLLM needed — it deliberately has zero dependencies beyond the standard library, so it runs even where the real service's vLLM dependency can't be installed at all, see Phase 5b's environment note below). It listens on `LLM_SERVICE_URL`'s default port, so exercising the rest of the batch/explain flow (button state, caching, mobile UI) on-device needs no `.env` change and never reaches Modal. Use the real deployment only when the actual generated text matters.
+
 ## Phase 5a — Personal-baseline comparison
 
 **Definition of done:**
