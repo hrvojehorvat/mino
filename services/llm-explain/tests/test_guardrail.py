@@ -11,6 +11,12 @@ CLEAN_EXAMPLES = [
     "Finger tracing showed a smooth, steady path this time. Phone stability "
     "results were similar to your usual range.",
     "",
+    # Diagnostic-style language is allowed as long as it's paired with a
+    # clear not-a-doctor disclaimer, per CLAUDE.md.
+    "This pattern is consistent with a diagnosis of early Parkinson's disease. "
+    "I'm not a doctor and this is not a medical evaluation.",
+    "These symptoms indicate you should consult a doctor for treatment. "
+    "Please remember I'm not a doctor — this is just a friendly suggestion.",
 ]
 
 VIOLATING_EXAMPLES = [
