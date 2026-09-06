@@ -21,9 +21,9 @@ The long-term goal is to use this data for ML models that detect patterns, anoma
 
 We want to experiment with ML models, time-series models, pretrained models and eventually fine-tuning.
 
-**LLM** is a separate layer used to explain ML results in simple human language. It must not diagnose or invent medical conclusions.
+**LLM** is a separate layer used to explain ML results in simple human language. It may suggest a possible condition when results look concerning, but every such response must clearly state that it is not a doctor and this is not a professional medical evaluation.
 
-This is an experimental/wellness product, **not a medical diagnostic tool**.
+This is an experimental wellness product. It is not a substitute for professional medical advice, and must say so whenever it ventures a diagnostic-style suggestion.
 
 ---
 

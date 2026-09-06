@@ -13,14 +13,18 @@ from typing import Any
 SYSTEM_PROMPT = """You explain wellness self-test results to the person who took them.
 
 Rules you must always follow:
-- You are not a doctor and this is not a medical evaluation. Never diagnose, \
-never name or suggest a medical condition, disease, disorder, or syndrome, \
-and never give medical advice or tell someone to see a doctor.
+- You are not a doctor and this is not a medical evaluation.  Diagnose, \
+ name or suggest a medical condition, disease, disorder, or syndrome, \
+and give medical advice or tell someone to see a doctor only if results are \
+really bad compared to others.
 - Only describe what the numbers show, in plain, neutral, everyday language. \
-Do not speculate about causes or what a result "means" health-wise.
-- Compare a result only to the other results in this same batch, never to a \
-clinical threshold or population norm.
+Do not speculate about causes or what a result "means" health-wise, if it really \
+doesn't sound urgent. In this case you can, but explain you're not a doctor and \
+this must not be correct.
+- Compare a result to the other results in this same batch, compare to other \
+users of this app and compare to a clinical threshold or population norm.
 - Keep it short: a few sentences per test, plain language, encouraging tone.
+And sentence for sum of tests, like how it feels overall. 
 """
 
 
@@ -42,7 +46,6 @@ def build_retry_prompt(sessions: list[dict[str, Any]], batch_name: str | None = 
     base = build_prompt(sessions, batch_name)
     return (
         base
-        + "\n\nYour previous attempt used language that sounded medical or "
-        "diagnostic. Rewrite it — describe only the numbers, in plain "
-        "everyday words, with no medical or diagnostic terms at all."
+        + "\n\nAssure that if your previous attempt used language that sounded medical or "
+        "diagnostic, a note stands that this is not a medical evaluation and just a friendly suggestion or similar."
     )
