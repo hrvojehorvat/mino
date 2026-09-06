@@ -54,5 +54,18 @@ This keeps verification proportionate to MVP scope: a real integration test wher
 
 **Testing approach:** same pattern as Phase 1/2 — backend e2e tests against the real `mino_test` Postgres database for the new endpoints and the `batchId` validation path, plus a manual on-device run as the final gate (build a batch, run through it, confirm it shows up correctly in history).
 
+## Phase 4 — LLM explanation layer
+
+**Definition of done:**
+1. `POST /batches/:id/explain` calls `services/llm-explain` with only `{testType, metrics}` pairs (never raw sessions), persists exactly one `LLMExplanation` row per `(batchId, modelId, modelVersion)`, and returns the same cached row on a repeat call instead of regenerating.
+2. `services/llm-explain`'s guardrail (`guardrail.py`) is enforced on the model's own output before any text leaves the service: a violating generation is retried once with a stricter prompt; a second violation returns `{ok: false}` rather than ever forwarding the text. Currently "violating" means diagnostic-style language with no accompanying not-a-doctor disclaimer (see `decisions/0007-llm-hosting-and-guardrail.md` for why this replaced an outright ban).
+3. `services/llm-explain/tests/test_guardrail.py` (pure, fast) covers both directions: clean text with no diagnostic language, and diagnostic language correctly paired with a disclaimer, both pass; diagnostic language with no disclaimer is flagged.
+4. A person can, on-device, complete a batch where every session has an `MLResult`, tap "Explain these results," and see a real plain-language explanation appear; viewing the batch again shows the same cached explanation with no second model call.
+5. Type checks pass across `apps/api`/mobile.
+
+**Testing approach:** same split as Phase 3 — fast deterministic unit tests carry the guardrail's correctness bar (`test_guardrail.py`, no model call), a slower GPU-marked eval set (`test_app.py`) exercises the real model against adversarial/edge-case prompts, run manually rather than on every commit. Manual on-device verification (build a batch, tap Explain, read the result) is the final gate, the same role it played in every prior phase.
+
+**Not yet done, called out explicitly rather than silently skipped:** `test_app.py`'s real-model eval set hasn't been run since the guardrail moved from "ban diagnostic language" to "require a disclaimer alongside it" — worth doing before trusting the new policy under inputs designed to break it, not just the manual spot-check done so far.
+
 ## Later phases
-To be filled in as each phase is planned in detail (Phase 4: LLM guardrail eval set against prohibited-language cases).
+To be filled in as each phase is planned in detail.

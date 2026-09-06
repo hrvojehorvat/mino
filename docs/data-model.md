@@ -14,6 +14,7 @@ One row per completed (or attempted) test run.
 |---|---|
 | `id` | |
 | `userId` | FK → User |
+| `batchId` | FK → TestBatch — every session belongs to exactly one batch, see below |
 | `testType` | enum; `FingerTapping`, `ReactionTime`, `TargetTapping`, `FingerTracing`, `PhoneStability`, `GuidedMovement` |
 | `startedAt` / `endedAt` | |
 | `clientAppVersion` | |
@@ -22,6 +23,18 @@ One row per completed (or attempted) test run.
 | `testParams` | nullable JSON — static per-session config that isn't itself a time-series, e.g. Finger Tracing's reference path (`{ referencePath: {x,y}[] }`). Distinct from `RawEvent`'s timestamped stream: this is set once at session start, not sampled over time. Null for test types that don't need it. |
 
 Natural foreign-key anchor everything else hangs off.
+
+### TestBatch
+A user-grouped set of test sessions (Phase 3.5) — e.g. "ran Finger Tapping, Reaction Time, and Target Tapping back to back." Exists so the LLM explanation layer (below) makes one call per batch instead of one per session, since that AI call — not Phase 3's free statistics — is the only metered step in the pipeline.
+
+| field | notes |
+|---|---|
+| `id` | |
+| `userId` | FK → User |
+| `name` | nullable — user-supplied label |
+| `createdAt` | |
+
+A batch has no status field — it's just however many sessions it has so far.
 
 ### RawEvent
 The raw time-series table for discrete-event tests (tapping, reaction time, target tapping, finger tracing).
@@ -75,11 +88,21 @@ Structured, versioned output of the Phase 3 ML service (`services/ml`) — one r
 
 There is no `MLFeatureSet` table — an earlier draft of this doc sketched features and results as two separate tables, but Phase 3 has no second consumer that needs "features" distinct from "results" (the computation *is* the result), so they were collapsed into the one `MLResult` table above rather than building a speculative split. Revisit only if a real second consumer of raw features (distinct from the computed metrics) shows up.
 
-## Derived/LLM tables (not built until Phase 4 — named here for clarity)
+### LLMExplanation
+Structured, versioned output of the Phase 4 LLM service (`services/llm-explain`) — one row per (batch, model, model version), not per session/`MLResult`: the whole reason `TestBatch` was built before this phase was to make one AI call per batch. Written by `apps/api`'s `LlmService`, the same way `MlService` owns `MLResult` — `services/llm-explain` is a stateless HTTP service with no database access.
 
-- **LLMExplanation** — `id`, `ml_result_id` (FK), `explanation_text`, model/prompt version, `generated_at`.
+| field | notes |
+|---|---|
+| `id` | |
+| `batchId` | FK → TestBatch |
+| `modelId` | e.g. `"llama-3.1-8b-instruct"` |
+| `modelVersion` | prompt/model version, bumped when either changes |
+| `explanationText` | |
+| `generatedAt` | |
 
-Kept explicitly separate from `RawEvent`/`SensorSession`, never derived-in-place or mixed into them, so raw data stays untouched and replayable no matter how many times ML models are re-run or replaced — a model version bump just adds new `MLResult` rows referencing the same immutable raw session.
+`(batchId, modelId, modelVersion)` is unique — same reproducibility idiom as `MLResult`: a prompt or model change adds new rows rather than overwriting, so old explanations stay as history under the version that actually produced them.
+
+Kept explicitly separate from `RawEvent`/`SensorSession`, never derived-in-place or mixed into them, so raw data stays untouched and replayable no matter how many times ML/LLM models are re-run or replaced.
 
 ## MVP scope boundary
 

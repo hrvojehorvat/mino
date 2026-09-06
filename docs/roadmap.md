@@ -55,10 +55,13 @@ Status legend: not started / in progress / done. Update the status line for a ph
 - Verified via `apps/api`'s e2e suite (batch create/list/session-validation) and a manual on-device run building and completing a real multi-test batch.
 
 ## Phase 4 — LLM explanation layer
-**Status:** not started
+**Status:** done
 
-- Separate service/module. Input contract is strictly `MLResult` structured data — never raw sessions, never free-form DB access.
-- Guardrails: system prompt + output validation against diagnostic/medical claims; maintain an eval set of prohibited-language test cases.
+- [x] `services/llm-explain` (Flask + vLLM): one call per `TestBatch`, input contract strictly `{testType, metrics}` pairs from `MLResult` — never raw sessions, never free-form DB access. Hosted on Modal (GPU required to run an 8B-class instruct model at all) — see `decisions/0007-llm-hosting-and-guardrail.md`.
+- [x] `LLMExplanation` table (`apps/api`, Prisma) keyed on `(batchId, modelId, modelVersion)`, same reproducibility idiom as `MLResult`. `apps/api`'s `LlmService`/`LlmClientService` own all writes; `services/llm-explain` has no database access.
+- [x] Mobile: "Explain these results" button on `BatchDetailScreen`, shown once every session in a batch has an `MLResult`.
+- [x] Guardrail (`services/llm-explain/mino_llm/guardrail.py`): deterministic check on the model's own output, enforced before any text leaves the service — not just a prompt instruction. Originally a blanket ban on diagnostic-style language; revised (with a corresponding CLAUDE.md change) to instead require a not-a-doctor disclaimer whenever diagnostic-style language appears, rather than banning it outright.
+- Not yet done: the GPU-marked real-model eval set (`services/llm-explain/tests/test_app.py`) hasn't been run against the current disclaimer-based guardrail — worth doing before trusting it under adversarial/edge-case inputs, not just the manual on-device spot-check done so far.
 
 ## Phase 5 — Personal baseline & anomaly detection
 **Status:** not started
