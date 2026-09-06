@@ -22,7 +22,11 @@ def get_model():
     if _llm is None:
         from vllm import LLM
 
-        _llm = LLM(model=MODEL_NAME)
+        # Llama 3.1's default max_model_len (131072) needs a KV cache larger
+        # than an A10G has free after loading the weights. Our prompts are a
+        # short fixed system prompt plus a batch's metrics, capped at 400
+        # output tokens, so 8192 is ample headroom.
+        _llm = LLM(model=MODEL_NAME, max_model_len=8192)
     return _llm
 
 

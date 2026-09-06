@@ -12,7 +12,10 @@ app = modal.App("mino-llm-explain-mistral")
 
 image = (
     modal.Image.debian_slim(python_version="3.11")
-    .pip_install("vllm==0.6.3.post1", "flask>=3.0", "hf_transfer")
+    # See modal_app.py for why transformers is pinned alongside vllm.
+    .pip_install(
+        "vllm==0.6.3.post1", "transformers==4.46.3", "flask>=3.0", "hf_transfer"
+    )
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1", "MINO_LLM_MODEL_NAME": MODEL_NAME})
     .add_local_python_source("mino_llm")
 )

@@ -6,7 +6,14 @@ app = modal.App("mino-llm-explain")
 
 image = (
     modal.Image.debian_slim(python_version="3.11")
-    .pip_install("vllm==0.6.3.post1", "flask>=3.0", "hf_transfer")
+    # transformers pinned: vllm 0.6.3.post1 only declares transformers>=4.45.2
+    # (no upper bound), so an unpinned install resolves to the latest release —
+    # whose refactored tokenizer internals (TokenizersBackend) this vllm version
+    # can't load, raising "AttributeError: ... has no attribute
+    # all_special_tokens_extended" at model init.
+    .pip_install(
+        "vllm==0.6.3.post1", "transformers==4.46.3", "flask>=3.0", "hf_transfer"
+    )
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
     .add_local_python_source("mino_llm")
 )
