@@ -27,6 +27,7 @@ export interface BaselineMetricSummary {
   baselineSd: number;
   zScore: number;
   isAnomalous: boolean;
+  favorable: boolean | null;
 }
 
 export interface BaselineResultSummary {

@@ -79,5 +79,18 @@ This keeps verification proportionate to MVP scope: a real integration test wher
 
 **Testing approach:** same split as Phase 3/4 — pure hand-computed unit tests carry `compute_baseline`'s correctness bar, an e2e test proves the DB/HTTP wiring against a real Postgres, and a manual pass against the running API is the final gate. One infrastructure issue surfaced (not a baseline logic bug) while getting the full e2e suite green: `apps/api/.env`'s real Modal `LLM_SERVICE_URL` was leaking into e2e tests underneath `.env.test`, because Vite/Vitest loads the base `.env` regardless of mode — `vitest.config.e2e.ts` now pins `LLM_SERVICE_URL` back to the local stub explicitly, the same way it already pinned `DISABLE_ML_SWEEP`.
 
+## Phase 5b — Baseline-grounded LLM explanations
+
+**Definition of done:**
+1. `services/ml`'s `compute_baseline` emits `favorable: bool | null` per metric alongside `isAnomalous`, from an explicit `METRIC_DIRECTION` lookup — correct in both directions for a lower-is-better metric, both directions for a higher-is-better metric, and `null` (never a guess) for a metric with no listed direction.
+2. `apps/api`'s `LlmService` sends each session's existing `BaselineResult` (or `null` if none yet) to `services/llm-explain` alongside raw metrics — verified via the outgoing HTTP request body, not just the response.
+3. `services/llm-explain/mino_llm/prompt.py` no longer asks the model to compare against other users or a clinical/population norm; it instead gives explicit per-anomaly framing rules keyed off `isAnomalous`/`favorable`.
+4. A real-model regression case (`test_app.py`, GPU-marked) proves a favorable anomaly (e.g. reaction time far faster than personal history) is never hedged with help-seeking language — the concrete case the user reported.
+5. Type checks pass across the whole workspace; `uv run pytest` passes for `services/ml` and `services/llm-explain`'s fast suite; `apps/api`'s full e2e suite passes.
+
+**Testing approach:** same split as Phase 4/5a — hand-computed unit tests carry `favorable`'s correctness bar (`services/ml/tests/test_baseline.py`), pure fast tests carry the prompt-building logic (`services/llm-explain/tests/test_prompt.py`, mirroring `test_guardrail.py`'s style — no model call), an e2e test proves the real payload reaches `services/llm-explain` correctly shaped (extended `batches-explain.e2e-spec.ts`, capturing the stub server's received request body rather than just its response), and the GPU-marked eval set is the final gate for the actual model's behavior — run manually, same as the rest of `test_app.py`.
+
+One environment note: `services/llm-explain`'s `pyproject.toml` declares `vllm` as a hard dependency, which pulls in `nvidia-cudnn-frontend` — a package with no macOS x86_64 wheel. `uv run pytest` therefore cannot sync at all on that platform, even for the fast, model-free tests (`test_prompt.py`/`test_guardrail.py`, neither of which imports `vllm`). Verified those two files instead via `PYTHONPATH=. uv run --no-project --with pytest -- python -m pytest ...`, which only installs `pytest` and skips the project's own dependency resolution. This is a pre-existing constraint of developing this service on an Intel Mac, not something introduced here — worth a real fix (e.g. an optional dependency group splitting `vllm` out of the fast test path) if this keeps coming up.
+
 ## Later phases
 To be filled in as each phase is planned in detail.

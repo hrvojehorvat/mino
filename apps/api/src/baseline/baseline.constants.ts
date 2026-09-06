@@ -3,4 +3,4 @@
 // stay as history instead of being silently reinterpreted. See
 // docs/data-model.md.
 export const MODEL_ID = 'personal-baseline-zscore';
-export const MODEL_VERSION = '1';
+export const MODEL_VERSION = '2';

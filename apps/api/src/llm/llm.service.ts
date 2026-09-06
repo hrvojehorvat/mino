@@ -5,7 +5,10 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { LlmClientService } from './llm-client.service.js';
+import {
+  ExplainBaselineMetric,
+  LlmClientService,
+} from './llm-client.service.js';
 import { MODEL_ID, MODEL_VERSION } from './llm.constants.js';
 
 export interface LLMExplanationSummary {
@@ -42,7 +45,15 @@ export class LlmService {
       where: { id: batchId },
       include: {
         sessions: {
-          include: { mlResults: { orderBy: { computedAt: 'desc' }, take: 1 } },
+          include: {
+            mlResults: {
+              orderBy: { computedAt: 'desc' },
+              take: 1,
+              include: {
+                baselineResults: { orderBy: { computedAt: 'desc' }, take: 1 },
+              },
+            },
+          },
         },
       },
     });
@@ -50,10 +61,11 @@ export class LlmService {
       throw new NotFoundException('batch not found');
     }
 
-    const sessions = batch.sessions.map((session) => ({
-      testType: session.testType,
-      result: session.mlResults[0] ?? null,
-    }));
+    const sessions = batch.sessions.map((session) => {
+      const mlResult = session.mlResults[0] ?? null;
+      const [baseline] = mlResult?.baselineResults ?? [];
+      return { testType: session.testType, result: mlResult, baseline: baseline ?? null };
+    });
     if (sessions.length === 0 || sessions.some((s) => s.result === null)) {
       throw new UnprocessableEntityException(
         'batch has sessions with no ML result yet',
@@ -64,6 +76,9 @@ export class LlmService {
       sessions: sessions.map((s) => ({
         testType: s.testType,
         metrics: s.result!.metrics as Record<string, unknown>,
+        baseline: s.baseline
+          ? (s.baseline.metrics as unknown as Record<string, ExplainBaselineMetric>)
+          : null,
       })),
       batchName: batch.name,
     });

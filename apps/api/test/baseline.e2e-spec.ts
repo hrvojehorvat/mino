@@ -92,6 +92,7 @@ describe('Baseline (e2e)', () => {
           value: 9.0,
           baselineMean: 6.0,
           isAnomalous: true,
+          favorable: true,
         },
       },
     });

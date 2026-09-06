@@ -114,7 +114,7 @@ Structured, versioned output of Phase 5a's personal-baseline comparison — one 
 | `modelId` | `"personal-baseline-zscore"` |
 | `modelVersion` | version of the baseline computation, bumped when the math changes |
 | `baselineSampleSize` | how many prior sessions (same user, same `testType`, same ML model/version) went into the comparison |
-| `metrics` | JSON, `{ metricKey: { value, baselineMean, baselineSd, zScore, isAnomalous } }` — only for metric keys with enough history (see below) |
+| `metrics` | JSON, `{ metricKey: { value, baselineMean, baselineSd, zScore, isAnomalous, favorable } }` — only for metric keys with enough history (see below) |
 | `computedAt` | |
 
 `(mlResultId, modelId, modelVersion)` is unique — same reproducibility idiom as `MLResult`/`LLMExplanation`.
@@ -123,7 +123,9 @@ Structured, versioned output of Phase 5a's personal-baseline comparison — one 
 
 Deliberately generic over metric names — no per-test-type special-casing, since every test type's `MLResult.metrics` is already a flat `{name: number}` dict.
 
-**Explicitly out of scope for this table/slice:** comparison against a population norm or clinical threshold, and any surfacing of this data to the mobile UI or the LLM explanation layer — both deferred, see `roadmap.md`'s Phase 5 scope note.
+**`favorable` (added when this data was surfaced to the LLM layer):** `isAnomalous` is direction-agnostic — it fires just as easily for "much faster than usual" as "much slower than usual," and a large *favorable* deviation is good news, not a caution. Whether lower or higher is the better direction is a fact about the metric itself, so it's looked up from a small, explicit `METRIC_DIRECTION` table in `services/ml/mino_ml/baseline.py` (`"lower_is_better"` / `"higher_is_better"` / not listed) rather than left for a prompt to infer. `favorable` is `true`/`false` when the metric has a known direction, `null` when it doesn't (e.g. `dominantFrequencyHz`, `fatigueSlopeMsPerTap`'s cousins with no established direction) — a metric not in the table fails safe to `null` rather than guessing. Only meaningful when `isAnomalous` is true.
+
+**Explicitly out of scope for this table/slice:** comparison against a population norm or clinical threshold — deferred, see `roadmap.md`'s Phase 5 scope note. (Surfacing this data to `services/llm-explain` and mobile UI is discussed below.)
 
 ## MVP scope boundary
 

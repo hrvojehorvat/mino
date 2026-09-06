@@ -3,4 +3,4 @@
 // stay as history instead of being silently reinterpreted. See
 // docs/data-model.md.
 export const MODEL_ID = 'llama-3.1-8b-instruct';
-export const MODEL_VERSION = '2';
+export const MODEL_VERSION = '3';

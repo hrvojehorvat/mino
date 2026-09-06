@@ -118,6 +118,11 @@ export interface BaselineMetricSummary {
   baselineSd: number;
   zScore: number;
   isAnomalous: boolean;
+  // Whether an anomalous deviation is good or bad news — null when the
+  // metric has no established "higher/lower is better" direction (see
+  // services/ml/mino_ml/baseline.py's METRIC_DIRECTION). Not meaningful
+  // when isAnomalous is false.
+  favorable: boolean | null;
 }
 
 export interface BaselineResultSummary {

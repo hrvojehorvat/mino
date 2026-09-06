@@ -4,6 +4,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from './../src/app.module.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
+import {
+  MODEL_ID as BASELINE_MODEL_ID,
+  MODEL_VERSION as BASELINE_MODEL_VERSION,
+} from './../src/baseline/baseline.constants.js';
 
 const deviceId = '44444444-4444-4444-8444-444444444444';
 
@@ -11,6 +15,7 @@ const deviceId = '44444444-4444-4444-8444-444444444444';
 // these tests stand up a stub HTTP server on the same port LlmClientService
 // defaults to (see llm-client.service.ts) rather than requiring one.
 let explainRequestCount = 0;
+let lastExplainRequestBody: unknown;
 let nextExplainResponse:
   | { ok: true; explanationText: string }
   | { ok: false; reason: string };
@@ -21,6 +26,7 @@ const stubLlmServer = http.createServer((req, res) => {
     req.on('data', (chunk) => (body += chunk));
     req.on('end', () => {
       explainRequestCount += 1;
+      lastExplainRequestBody = JSON.parse(body);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(nextExplainResponse));
     });
@@ -49,6 +55,7 @@ describe('BatchesController — explain (e2e)', () => {
 
   beforeEach(async () => {
     explainRequestCount = 0;
+    lastExplainRequestBody = undefined;
     nextExplainResponse = { ok: true, explanationText: 'Your results look steady overall.' };
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -197,6 +204,60 @@ describe('BatchesController — explain (e2e)', () => {
       .expect(201);
 
     expect(explainRequestCount).toBe(1);
+  });
+
+  it('includes the personal baseline comparison in the outgoing explain request when one exists', async () => {
+    const batchId = await createComputedBatch();
+
+    const session = await prisma.testSession.findFirstOrThrow({ where: { batchId } });
+    const mlResult = await prisma.mLResult.findFirstOrThrow({
+      where: { sessionId: session.id },
+    });
+    await prisma.baselineResult.create({
+      data: {
+        mlResultId: mlResult.id,
+        modelId: BASELINE_MODEL_ID,
+        modelVersion: BASELINE_MODEL_VERSION,
+        baselineSampleSize: 3,
+        metrics: {
+          meanIntervalMs: {
+            value: 133.4,
+            baselineMean: 200.0,
+            baselineSd: 10.0,
+            zScore: -6.66,
+            isAnomalous: true,
+            favorable: null,
+          },
+        },
+      },
+    });
+
+    await request(app.getHttpServer())
+      .post(`/batches/${batchId}/explain`)
+      .send({ deviceId })
+      .expect(201);
+
+    const body = lastExplainRequestBody as { sessions: Array<{ baseline: unknown }> };
+    expect(body.sessions[0].baseline).toMatchObject({
+      meanIntervalMs: {
+        value: 133.4,
+        baselineMean: 200.0,
+        isAnomalous: true,
+        favorable: null,
+      },
+    });
+  });
+
+  it('sends baseline: null when no baseline has been computed yet for a session', async () => {
+    const batchId = await createComputedBatch();
+
+    await request(app.getHttpServer())
+      .post(`/batches/${batchId}/explain`)
+      .send({ deviceId })
+      .expect(201);
+
+    const body = lastExplainRequestBody as { sessions: Array<{ baseline: unknown }> };
+    expect(body.sessions[0].baseline).toBeNull();
   });
 
   it('returns 404 for a batch belonging to a different device', async () => {
