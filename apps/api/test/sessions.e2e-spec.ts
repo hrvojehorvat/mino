@@ -34,6 +34,8 @@ describe('SessionsController (e2e)', () => {
     await app.init();
 
     prisma = app.get(PrismaService);
+    await prisma.baselineResult.deleteMany();
+    await prisma.mLResult.deleteMany();
     await prisma.rawEvent.deleteMany();
     await prisma.sensorSession.deleteMany();
     await prisma.testSession.deleteMany();

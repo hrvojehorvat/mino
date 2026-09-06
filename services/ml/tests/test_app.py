@@ -115,6 +115,25 @@ def test_compute_phone_stability(client):
     assert metrics["accelRmsG"] == pytest.approx(0, abs=1e-9)
 
 
+def test_baseline(client):
+    response = client.post(
+        "/baseline",
+        json={
+            "history": [
+                {"tapRateHz": 5.0},
+                {"tapRateHz": 6.0},
+                {"tapRateHz": 7.0},
+            ],
+            "current": {"tapRateHz": 9.0},
+        },
+    )
+
+    assert response.status_code == 200
+    result = response.get_json()
+    assert result["sampleSize"] == 3
+    assert result["metrics"]["tapRateHz"]["isAnomalous"] is True
+
+
 def test_compute_guided_movement(client):
     response = client.post(
         "/compute",

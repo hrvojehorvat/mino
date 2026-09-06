@@ -18,6 +18,11 @@ export default defineConfig({
       // On-demand compute (GET /batches/:id) is unaffected and still
       // exercised by this suite.
       DISABLE_ML_SWEEP: 'true',
+      // Vite loads the base .env underneath .env.test regardless of mode, so
+      // apps/api/.env's real Modal LLM_SERVICE_URL would otherwise leak into
+      // these tests instead of the stub server batches-explain.e2e-spec.ts
+      // starts on port 5002. Pin it back to that stub explicitly.
+      LLM_SERVICE_URL: 'http://localhost:5002',
     },
   },
 });

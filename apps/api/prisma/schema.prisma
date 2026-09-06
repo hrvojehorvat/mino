@@ -107,16 +107,37 @@ model SensorSession {
 // Prisma; services/ml is a stateless HTTP service with no DB access. See
 // decisions/0006 and data-model.md.
 model MLResult {
-  id           String      @id @default(cuid())
-  sessionId    String
-  session      TestSession @relation(fields: [sessionId], references: [id])
-  modelId      String
-  modelVersion String
-  metrics      Json
-  computedAt   DateTime    @default(now())
+  id             String           @id @default(cuid())
+  sessionId      String
+  session        TestSession      @relation(fields: [sessionId], references: [id])
+  modelId        String
+  modelVersion   String
+  metrics        Json
+  computedAt     DateTime         @default(now())
+  baselineResults BaselineResult[]
 
   @@unique([sessionId, modelId, modelVersion])
   @@index([sessionId])
+}
+
+// Phase 5a: per-metric comparison of one session's MLResult against that
+// same user's own history of past MLResults for the same test type — a
+// simple z-score, not a trained model (see decisions/0006 for the "ML is
+// replaceable" property this keeps). One row per (session, model version),
+// same reproducibility idiom as MLResult. Population-norm comparison is
+// deliberately out of scope here — see docs/roadmap.md Phase 5.
+model BaselineResult {
+  id                 String   @id @default(cuid())
+  mlResultId         String
+  mlResult           MLResult @relation(fields: [mlResultId], references: [id])
+  modelId            String
+  modelVersion       String
+  baselineSampleSize Int
+  metrics            Json
+  computedAt         DateTime @default(now())
+
+  @@unique([mlResultId, modelId, modelVersion])
+  @@index([mlResultId])
 }
 
 // Plain-language explanation of a batch's MLResult metrics, from the Phase 4

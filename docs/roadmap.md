@@ -64,9 +64,20 @@ Status legend: not started / in progress / done. Update the status line for a ph
 - Not yet done: the GPU-marked real-model eval set (`services/llm-explain/tests/test_app.py`) hasn't been run against the current disclaimer-based guardrail — worth doing before trusting it under adversarial/edge-case inputs, not just the manual on-device spot-check done so far.
 
 ## Phase 5 — Personal baseline & anomaly detection
-**Status:** not started
+**Status:** in progress
 
 - Longitudinal analysis across a user's session history, per-user baselines, drift/anomaly detection.
 - Where "pretrained models" and fine-tuning experiments (per CLAUDE.md's AI section) actually start.
 - Intentionally left loose — depends on what Phase 1-3 reveal about data quality and available signal.
 - **Scope decision:** starts with personal-baseline comparison only (a session's metrics vs. that user's own history) — needs no external data and carries a much lighter liability posture than claiming population-normative comparison. **Deferred, marked for revisiting:** also comparing against a population norm/clinical threshold — needs either a real normative dataset from Mino's own users (not enough data yet) or sourced/validated clinical reference values, and is a meaningfully bigger regulatory step than within-user comparison. Revisit once there's real usage data or a deliberate decision to source external reference values.
+
+### Phase 5a — Personal-baseline comparison
+**Status:** done
+
+- [x] `services/ml`: `POST /baseline` — pure `compute_baseline(history, current, z_threshold=2.0)`, per-metric z-score vs. the user's own history, `isAnomalous = |zScore| > 2.0`. Requires at least 3 prior data points per metric; below that, that metric is simply omitted (not an error). Guards zero-SD history. Deliberately generic over metric names, like `/compute`.
+- [x] `BaselineResult` table (`apps/api`, Prisma), keyed on `(mlResultId, modelId, modelVersion)` — note this FKs to `MLResult`, not `TestSession` (a deliberate deviation from the original plan sketch), so a future `MLResult` model-version bump can't leave a stale `BaselineResult` looking "already computed." See `data-model.md`.
+- [x] `BaselineService`/`BaselineClientService` (`apps/api/src/baseline/`), mirroring `MlService`'s shape exactly: on-demand only, no background sweep — wired into `BatchesService.findOneForDevice`'s existing pending-computation chain, right after `MlService`'s own step.
+- [x] `packages/shared-types` + `GET /batches/:id` response: `baseline: BaselineResultSummary | null` per session.
+- [x] Unit tests (`services/ml/tests/test_baseline.py`, hand-computed fixtures) and e2e tests (`apps/api/test/baseline.e2e-spec.ts`, real `mino_test` Postgres) — sample-size growth, anomaly flagging, insufficient-history empty result.
+- [x] Manual verification: 4 real batches submitted through the running API for one dev device, `sampleSize` observed growing 0→1→2→3 with `metrics: {}` until the threshold, then the deliberately fast 4th run correctly flagged `tapRateHz`/inter-tap-interval as anomalous with sensible z-scores while unrelated metrics (`tapDurationMeanMs`) stayed non-anomalous.
+- Explicitly not in this slice: no mobile UI, no LLM/guardrail change, no population-norm comparison (see Phase 5's scope note above) — the API response carries the data so it's inspectable, ready for a later slice to decide how (or whether) to surface it.

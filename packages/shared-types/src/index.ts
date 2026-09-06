@@ -106,6 +106,25 @@ export interface MLResultSummary {
   computedAt: string;
 }
 
+// Phase 5a: per-metric comparison of this session's mlResult against this
+// same user's own history for the same test type (simple z-score, not a
+// trained model — see docs/decisions/0006-ml-trigger-mechanism.md and
+// docs/roadmap.md's Phase 5 scope note on population norms being deferred).
+// Null until mlResult exists and enough history has accumulated to compute
+// against (see BaselineResult in the Prisma schema for the threshold).
+export interface BaselineMetricSummary {
+  value: number;
+  baselineMean: number;
+  baselineSd: number;
+  zScore: number;
+  isAnomalous: boolean;
+}
+
+export interface BaselineResultSummary {
+  sampleSize: number;
+  metrics: Record<string, BaselineMetricSummary>;
+}
+
 export interface TestBatchSessionDetail {
   id: string;
   testType: TestType;
@@ -116,6 +135,7 @@ export interface TestBatchSessionDetail {
   // again after a short delay until every session has a result (or gives
   // up after a bounded number of attempts).
   mlResult: MLResultSummary | null;
+  baseline: BaselineResultSummary | null;
 }
 
 // Plain-language explanation of this batch's results, from the Phase 4 LLM

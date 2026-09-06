@@ -10,6 +10,7 @@ from typing import Any
 
 from flask import Flask, jsonify, request
 
+from .baseline import compute_baseline
 from .features import compute_metrics
 
 app = Flask(__name__)
@@ -30,3 +31,10 @@ def compute() -> Any:
         body.get("testParams"),
     )
     return jsonify(metrics)
+
+
+@app.post("/baseline")
+def baseline() -> Any:
+    body = request.get_json(force=True)
+    result = compute_baseline(body.get("history", []), body["current"])
+    return jsonify(result)

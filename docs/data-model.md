@@ -104,6 +104,27 @@ Structured, versioned output of the Phase 4 LLM service (`services/llm-explain`)
 
 Kept explicitly separate from `RawEvent`/`SensorSession`, never derived-in-place or mixed into them, so raw data stays untouched and replayable no matter how many times ML/LLM models are re-run or replaced.
 
+### BaselineResult
+Structured, versioned output of Phase 5a's personal-baseline comparison — one row per (`MLResult`, model, model version). Written by `apps/api`'s `BaselineService`, calling `services/ml`'s stateless `/baseline` endpoint (no DB access there), same shape as `MLResult`/`LLMExplanation`.
+
+| field | notes |
+|---|---|
+| `id` | |
+| `mlResultId` | FK → MLResult — **not** `sessionId`. Tying this to the specific `MLResult` row (rather than the session it came from) means a future bump to `MlService`'s own `MODEL_ID`/`MODEL_VERSION` can't leave a stale `BaselineResult` looking "already computed" for a session whose metrics were actually recomputed under a new model version — the pending-check in `BaselineService.computePendingForBatch` looks for a `BaselineResult` on *that* `MLResult`, not just on the session. |
+| `modelId` | `"personal-baseline-zscore"` |
+| `modelVersion` | version of the baseline computation, bumped when the math changes |
+| `baselineSampleSize` | how many prior sessions (same user, same `testType`, same ML model/version) went into the comparison |
+| `metrics` | JSON, `{ metricKey: { value, baselineMean, baselineSd, zScore, isAnomalous } }` — only for metric keys with enough history (see below) |
+| `computedAt` | |
+
+`(mlResultId, modelId, modelVersion)` is unique — same reproducibility idiom as `MLResult`/`LLMExplanation`.
+
+**Method (Phase 5a scope — plain per-user z-score, not a trained model):** for each numeric key in the current session's `MLResult.metrics`, compute the mean/SD of that same key across the user's own prior sessions of the same `testType` (under the same ML `modelId`/`modelVersion`, current session excluded), then `zScore = (current - mean) / sd`, `isAnomalous = |zScore| > 2.0`. Requires at least 3 prior data points per metric — below that, the metric is simply omitted from `metrics` (not an error); `baselineSampleSize` still reports the actual history size so callers can tell "not enough data yet" apart from "nothing anomalous." A zero-SD history returns `zScore = 0`, not anomalous, rather than dividing by zero.
+
+Deliberately generic over metric names — no per-test-type special-casing, since every test type's `MLResult.metrics` is already a flat `{name: number}` dict.
+
+**Explicitly out of scope for this table/slice:** comparison against a population norm or clinical threshold, and any surfacing of this data to the mobile UI or the LLM explanation layer — both deferred, see `roadmap.md`'s Phase 5 scope note.
+
 ## MVP scope boundary
 
 MVP (Phase 1) implements only `User`, `TestSession`, `RawEvent`. It does **not** compute or store any derived score/metric — no `tapCount` or `avgInterval` column on `TestSession`, even though it's tempting. That boundary must stay crisp from day one so the raw/derived separation isn't quietly violated in the very first feature.

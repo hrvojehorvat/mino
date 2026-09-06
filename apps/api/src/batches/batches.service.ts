@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { TestType as PrismaTestType } from '@prisma/client';
 import type { TestType } from '@mino/shared-types';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { BaselineService } from '../baseline/baseline.service.js';
 import { LlmService, LLMExplanationSummary } from '../llm/llm.service.js';
 import { MlService } from '../ml/ml.service.js';
 import { CreateTestBatchDto } from './dto/create-test-batch.dto.js';
@@ -20,12 +21,26 @@ export interface MLResultSummary {
   computedAt: string;
 }
 
+export interface BaselineMetricSummary {
+  value: number;
+  baselineMean: number;
+  baselineSd: number;
+  zScore: number;
+  isAnomalous: boolean;
+}
+
+export interface BaselineResultSummary {
+  sampleSize: number;
+  metrics: Record<string, BaselineMetricSummary>;
+}
+
 export interface TestBatchSessionDetail {
   id: string;
   testType: TestType;
   status: string;
   startedAt: string;
   mlResult: MLResultSummary | null;
+  baseline: BaselineResultSummary | null;
 }
 
 export interface TestBatchDetail {
@@ -51,6 +66,7 @@ export class BatchesService {
     private readonly prisma: PrismaService,
     private readonly mlService: MlService,
     private readonly llmService: LlmService,
+    private readonly baselineService: BaselineService,
   ) {}
 
   async create(dto: CreateTestBatchDto): Promise<{ id: string }> {
@@ -96,12 +112,16 @@ export class BatchesService {
   ): Promise<TestBatchDetail> {
     let detail = await this.loadDetail(id, deviceId);
 
-    const hasPendingResults = detail.sessions.some((s) => s.mlResult === null);
-    if (hasPendingResults) {
+    if (detail.sessions.some((s) => s.mlResult === null)) {
       // A background sweep also picks up pending sessions (see MlService),
       // but a user looking at this screen right now shouldn't wait out that
       // interval — compute this batch's pending sessions immediately.
       await this.mlService.computePendingForBatch(id);
+      detail = await this.loadDetail(id, deviceId);
+    }
+
+    if (detail.sessions.some((s) => s.mlResult !== null && s.baseline === null)) {
+      await this.baselineService.computePendingForBatch(id);
       detail = await this.loadDetail(id, deviceId);
     }
 
@@ -140,6 +160,12 @@ export class BatchesService {
                 mlResults: {
                   orderBy: { computedAt: 'desc' },
                   take: 1,
+                  include: {
+                    baselineResults: {
+                      orderBy: { computedAt: 'desc' },
+                      take: 1,
+                    },
+                  },
                 },
               },
             },
@@ -169,6 +195,7 @@ export class BatchesService {
         : null,
       sessions: batch.sessions.map((session) => {
         const [mlResult] = session.mlResults;
+        const [baseline] = mlResult?.baselineResults ?? [];
 
         return {
           id: session.id,
@@ -181,6 +208,15 @@ export class BatchesService {
                 modelVersion: mlResult.modelVersion,
                 metrics: mlResult.metrics as Record<string, unknown>,
                 computedAt: mlResult.computedAt.toISOString(),
+              }
+            : null,
+          baseline: baseline
+            ? {
+                sampleSize: baseline.baselineSampleSize,
+                metrics: baseline.metrics as unknown as Record<
+                  string,
+                  BaselineMetricSummary
+                >,
               }
             : null,
         };

@@ -67,6 +67,7 @@ describe('BatchesController — explain (e2e)', () => {
 
     prisma = app.get(PrismaService);
     await prisma.lLMExplanation.deleteMany();
+    await prisma.baselineResult.deleteMany();
     await prisma.mLResult.deleteMany();
     await prisma.rawEvent.deleteMany();
     await prisma.sensorSession.deleteMany();

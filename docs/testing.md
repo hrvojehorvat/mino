@@ -67,5 +67,17 @@ This keeps verification proportionate to MVP scope: a real integration test wher
 
 **Not yet done, called out explicitly rather than silently skipped:** `test_app.py`'s real-model eval set hasn't been run since the guardrail moved from "ban diagnostic language" to "require a disclaimer alongside it" — worth doing before trusting the new policy under inputs designed to break it, not just the manual spot-check done so far.
 
+## Phase 5a — Personal-baseline comparison
+
+**Definition of done:**
+1. `services/ml`'s `POST /baseline` computes per-metric z-scores against a supplied history and flags `isAnomalous = |zScore| > 2.0`, requiring at least 3 prior data points per metric (fewer → that metric omitted, not an error) and guarding zero-SD history (`zScore = 0`, not anomalous).
+2. `apps/api`'s `BaselineService` finds every session with an `MLResult` but no `BaselineResult` yet (same on-demand trigger point as `MlService`, no background sweep), loads that user's prior sessions of the same `testType`/ML model/version as history, calls `services/ml`, and persists exactly one `BaselineResult` row per `(mlResultId, modelId, modelVersion)`.
+3. `GET /batches/:id` includes `baseline: { sampleSize, metrics }` per session — `metrics: {}` with a growing `sampleSize` before enough history exists, populated with `value`/`baselineMean`/`baselineSd`/`zScore`/`isAnomalous` per metric once it does.
+4. `services/ml/tests/test_baseline.py` (hand-computed fixtures: expected z-score, non-anomaly, insufficient-history, zero-SD, missing-metric, non-numeric-value) and `apps/api/test/baseline.e2e-spec.ts` (real `mino_test` Postgres: anomaly flagged after enough history, empty result before) all pass.
+5. Type checks pass across the whole workspace; `uv run pytest` passes for `services/ml`; `apps/api`'s full e2e suite passes together, not just `baseline.e2e-spec.ts` in isolation (adding `BaselineResult`'s FK to `MLResult` required adding `baselineResult.deleteMany()` ahead of `mLResult.deleteMany()` in every e2e spec's cleanup — `batches.e2e-spec.ts`, `batches-explain.e2e-spec.ts`, `sessions.e2e-spec.ts`).
+6. Manual on-device/API verification: several batches of the same test type run for one dev user, sample size growing with empty metrics until the threshold, then a deliberate outlier run correctly flagged.
+
+**Testing approach:** same split as Phase 3/4 — pure hand-computed unit tests carry `compute_baseline`'s correctness bar, an e2e test proves the DB/HTTP wiring against a real Postgres, and a manual pass against the running API is the final gate. One infrastructure issue surfaced (not a baseline logic bug) while getting the full e2e suite green: `apps/api/.env`'s real Modal `LLM_SERVICE_URL` was leaking into e2e tests underneath `.env.test`, because Vite/Vitest loads the base `.env` regardless of mode — `vitest.config.e2e.ts` now pins `LLM_SERVICE_URL` back to the local stub explicitly, the same way it already pinned `DISABLE_ML_SWEEP`.
+
 ## Later phases
 To be filled in as each phase is planned in detail.
