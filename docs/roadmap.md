@@ -110,9 +110,9 @@ Status legend: not started / in progress / done. Update the status line for a ph
 - [x] Resource group `mino-rg` created (`westeurope`).
 - [x] Postgres server on Azure (`mino-db-hrvoje`, `northeurope`) + all 12 existing migrations run against it — see `azure-deployment.md` for the exact command log, including two false starts along the way: `westeurope` was rejecting new PostgreSQL Flexible Server customers, and a one-time `Microsoft.DBforPostgreSQL` provider registration was needed first.
 - [x] Dockerfiles for `apps/api`, `services/ml`, `services/llm-explain`'s `dev_stub.py` — all three built and smoke-tested locally. Along the way: added `gunicorn` to `services/ml` (Flask's dev server isn't production-safe), and an explicit `openssl` install in `apps/api`'s image (Prisma's engine can't detect libssl on `node:20-slim` otherwise).
-- [ ] Images pushed to GHCR.
-- [ ] Azure Container Apps environment running all three (only `apps/api` public).
-- [ ] `apps/mobile` static web export on Azure Static Web Apps, pointed at the live API.
+- [x] Images pushed to GHCR (`ghcr.io/hrvojehorvat/mino-{api,ml,llm-explain}:latest`), all private packages.
+- [x] Azure Container Apps environment (`mino-env`, `northeurope`) running all three containers — only `mino-api` has public ingress. Verified end-to-end against the live URL (signup + protected route with the returned JWT). Hit and fixed a Postgres firewall gap along the way (server only allowed the one IP from Step 2, not Azure's own network) — see `azure-deployment.md`.
+- [x] `apps/mobile` static web export on Azure Static Web Apps (`mino-web`, `eastus2`), pointed at the live API — verified live at `https://green-dune-0665e610f.5.azurestaticapps.net`. Hit the same regional-capacity rejection as Step 2 (`westeurope` not accepting new Static Web Apps customers) plus a one-time `Microsoft.Web` provider registration — see `azure-deployment.md`.
 - [ ] End-to-end test against the deployed stack.
 - Full step-by-step command log kept in `azure-deployment.md`, not here — this entry just tracks phase status like every other roadmap phase.
 - Workflow note: for this phase, the user runs every `az`/`gh` provisioning command themselves rather than Claude executing it via Bash — see `azure-deployment.md`'s header note.
