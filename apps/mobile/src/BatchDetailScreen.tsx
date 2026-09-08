@@ -8,8 +8,8 @@ import {
   View,
 } from 'react-native';
 import type { TestBatchDetail, TestType } from '@mino/shared-types';
+import { authHeader } from './auth';
 import { API_BASE_URL } from './config';
-import { getOrCreateDeviceId } from './deviceId';
 
 const TEST_LABELS: Record<TestType, string> = {
   fingerTapping: 'Finger Tapping',
@@ -56,10 +56,9 @@ export default function BatchDetailScreen({ batchId, onBack }: Props) {
 
     const poll = async () => {
       try {
-        const deviceId = await getOrCreateDeviceId();
-        const response = await fetch(
-          `${API_BASE_URL}/batches/${batchId}?deviceId=${encodeURIComponent(deviceId)}`,
-        );
+        const response = await fetch(`${API_BASE_URL}/batches/${batchId}`, {
+          headers: await authHeader(),
+        });
 
         if (!response.ok) {
           throw new Error(`Failed with status ${response.status}`);
@@ -103,13 +102,11 @@ export default function BatchDetailScreen({ batchId, onBack }: Props) {
     setExplainError(false);
 
     try {
-      const deviceId = await getOrCreateDeviceId();
       const response = await fetch(
         `${API_BASE_URL}/batches/${batchId}/explain`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ deviceId }),
+          headers: await authHeader(),
         },
       );
 

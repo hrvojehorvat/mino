@@ -3,9 +3,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from './../src/app.module.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
+import { bearer, signupAndAuthenticate } from './support/auth.js';
 
 const basePayload: Record<string, unknown> = {
-  deviceId: '11111111-1111-4111-8111-111111111111',
   batchId: '',
   testType: 'fingerTapping',
   startedAt: '2026-09-02T22:00:00.000Z',
@@ -17,6 +17,7 @@ const basePayload: Record<string, unknown> = {
 describe('SessionsController (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let token: string;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -42,9 +43,12 @@ describe('SessionsController (e2e)', () => {
     await prisma.testBatch.deleteMany();
     await prisma.user.deleteMany();
 
+    ({ token } = await signupAndAuthenticate(app));
+
     const batchResponse = await request(app.getHttpServer())
       .post('/batches')
-      .send({ deviceId: basePayload.deviceId });
+      .set(bearer(token))
+      .send({});
     basePayload.batchId = batchResponse.body.id;
   });
 
@@ -64,6 +68,7 @@ describe('SessionsController (e2e)', () => {
 
     const response = await request(app.getHttpServer())
       .post('/sessions')
+      .set(bearer(token))
       .send(payload)
       .expect(201);
 
@@ -101,6 +106,7 @@ describe('SessionsController (e2e)', () => {
 
     const response = await request(app.getHttpServer())
       .post('/sessions')
+      .set(bearer(token))
       .send(payload)
       .expect(201);
 
@@ -138,6 +144,7 @@ describe('SessionsController (e2e)', () => {
 
     const response = await request(app.getHttpServer())
       .post('/sessions')
+      .set(bearer(token))
       .send(payload)
       .expect(201);
 
@@ -183,6 +190,7 @@ describe('SessionsController (e2e)', () => {
 
     const response = await request(app.getHttpServer())
       .post('/sessions')
+      .set(bearer(token))
       .send(payload)
       .expect(201);
 
@@ -220,6 +228,7 @@ describe('SessionsController (e2e)', () => {
 
     const response = await request(app.getHttpServer())
       .post('/sessions')
+      .set(bearer(token))
       .send(payload)
       .expect(201);
 
@@ -256,6 +265,7 @@ describe('SessionsController (e2e)', () => {
 
     const response = await request(app.getHttpServer())
       .post('/sessions')
+      .set(bearer(token))
       .send(payload)
       .expect(201);
 
@@ -278,22 +288,22 @@ describe('SessionsController (e2e)', () => {
     expect(sensorSession?.samples).toEqual(payload.sensorSamples);
   });
 
-  it('rejects a submission missing deviceId (400)', async () => {
-    const { deviceId: _deviceId, ...payloadWithoutDeviceId } = basePayload;
+  it('rejects requests with no bearer token (401)', async () => {
     await request(app.getHttpServer())
       .post('/sessions')
       .send({
-        ...payloadWithoutDeviceId,
+        ...basePayload,
         events: [
           { seq: 0, eventType: 'touchDown', tMs: 100, x: 1, y: 1, pointerId: 0 },
         ],
       })
-      .expect(400);
+      .expect(401);
   });
 
   it('rejects a submission with an empty events array (400)', async () => {
     await request(app.getHttpServer())
       .post('/sessions')
+      .set(bearer(token))
       .send({ ...basePayload, events: [] })
       .expect(400);
   });
@@ -310,6 +320,7 @@ describe('SessionsController (e2e)', () => {
 
     await request(app.getHttpServer())
       .post('/sessions')
+      .set(bearer(token))
       .send({ ...basePayload, events })
       .expect(400);
   });

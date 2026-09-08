@@ -8,15 +8,20 @@ import {
   View,
 } from 'react-native';
 import type { TestBatchSummary } from '@mino/shared-types';
+import { authHeader, logout } from './auth';
 import { API_BASE_URL } from './config';
-import { getOrCreateDeviceId } from './deviceId';
 
 interface Props {
   onBack: () => void;
   onOpenBatch: (batchId: string) => void;
+  onLoggedOut: () => void;
 }
 
-export default function BatchHistoryScreen({ onBack, onOpenBatch }: Props) {
+export default function BatchHistoryScreen({
+  onBack,
+  onOpenBatch,
+  onLoggedOut,
+}: Props) {
   const [batches, setBatches] = useState<TestBatchSummary[] | null>(null);
   const [error, setError] = useState(false);
 
@@ -25,10 +30,9 @@ export default function BatchHistoryScreen({ onBack, onOpenBatch }: Props) {
 
     (async () => {
       try {
-        const deviceId = await getOrCreateDeviceId();
-        const response = await fetch(
-          `${API_BASE_URL}/batches?deviceId=${encodeURIComponent(deviceId)}`,
-        );
+        const response = await fetch(`${API_BASE_URL}/batches`, {
+          headers: await authHeader(),
+        });
 
         if (!response.ok) {
           throw new Error(`Failed with status ${response.status}`);
@@ -50,6 +54,16 @@ export default function BatchHistoryScreen({ onBack, onOpenBatch }: Props) {
     <View style={styles.container}>
       <Pressable style={styles.backButton} onPress={onBack}>
         <Text style={styles.backButtonText}>{'< Tests'}</Text>
+      </Pressable>
+
+      <Pressable
+        style={styles.logoutButton}
+        onPress={async () => {
+          await logout();
+          onLoggedOut();
+        }}
+      >
+        <Text style={styles.logoutButtonText}>Log out</Text>
       </Pressable>
 
       <Text style={styles.title}>Past batches</Text>
@@ -113,6 +127,19 @@ const styles = StyleSheet.create({
   backButtonText: {
     fontSize: 16,
     color: '#3b82f6',
+    fontWeight: '600',
+  },
+  logoutButton: {
+    position: 'absolute',
+    top: 48,
+    right: 16,
+    zIndex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  logoutButtonText: {
+    fontSize: 16,
+    color: '#b91c1c',
     fontWeight: '600',
   },
   list: {

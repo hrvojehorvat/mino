@@ -32,7 +32,10 @@ export class SessionsService {
     private readonly sensorSessions: SensorSessionsService,
   ) {}
 
-  async create(dto: CreateTestSessionDto): Promise<{ id: string }> {
+  async create(
+    dto: CreateTestSessionDto,
+    userId: string,
+  ): Promise<{ id: string }> {
     const events = dto.events ?? [];
     const sensorSamples = dto.sensorSamples ?? [];
 
@@ -75,23 +78,17 @@ export class SessionsService {
       );
     }
 
-    const user = await this.prisma.user.upsert({
-      where: { deviceId: dto.deviceId },
-      create: { deviceId: dto.deviceId },
-      update: {},
-    });
-
     const batch = await this.prisma.testBatch.findUnique({
       where: { id: dto.batchId },
     });
 
-    if (!batch || batch.userId !== user.id) {
-      throw new BadRequestException('batchId does not exist for this device');
+    if (!batch || batch.userId !== userId) {
+      throw new BadRequestException('batchId does not exist for this user');
     }
 
     const session = await this.prisma.testSession.create({
       data: {
-        userId: user.id,
+        userId,
         batchId: dto.batchId,
         testType: testTypeMap[dto.testType],
         startedAt,

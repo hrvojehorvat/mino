@@ -3,11 +3,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from './../src/app.module.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
-
-const deviceId = '44444444-4444-4444-8444-444444444444';
+import { bearer, signupAndAuthenticate } from './support/auth.js';
 
 const sessionPayload = (batchId: string) => ({
-  deviceId,
   batchId,
   testType: 'fingerTapping',
   startedAt: '2026-09-02T22:00:00.000Z',
@@ -23,6 +21,7 @@ const sessionPayload = (batchId: string) => ({
 describe('Baseline (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let token: string;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -47,6 +46,8 @@ describe('Baseline (e2e)', () => {
     await prisma.testSession.deleteMany();
     await prisma.testBatch.deleteMany();
     await prisma.user.deleteMany();
+
+    ({ token } = await signupAndAuthenticate(app));
   });
 
   afterEach(async () => {
@@ -56,10 +57,12 @@ describe('Baseline (e2e)', () => {
   async function createSessionWithMlResult(metrics: Record<string, number>) {
     const batch = await request(app.getHttpServer())
       .post('/batches')
-      .send({ deviceId })
+      .set(bearer(token))
+      .send({})
       .expect(201);
     const session = await request(app.getHttpServer())
       .post('/sessions')
+      .set(bearer(token))
       .send(sessionPayload(batch.body.id))
       .expect(201);
     await prisma.mLResult.create({
@@ -81,7 +84,7 @@ describe('Baseline (e2e)', () => {
 
     const response = await request(app.getHttpServer())
       .get(`/batches/${current.batchId}`)
-      .query({ deviceId })
+      .set(bearer(token))
       .expect(200);
 
     const [session] = response.body.sessions;
@@ -112,7 +115,7 @@ describe('Baseline (e2e)', () => {
 
     const response = await request(app.getHttpServer())
       .get(`/batches/${only.batchId}`)
-      .query({ deviceId })
+      .set(bearer(token))
       .expect(200);
 
     const [session] = response.body.sessions;

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import type { TestType } from '@mino/shared-types';
 import TappingScreen from './src/TappingScreen';
@@ -11,6 +11,8 @@ import GuidedMovementScreen from './src/GuidedMovementScreen';
 import BatchPickerScreen from './src/BatchPickerScreen';
 import BatchHistoryScreen from './src/BatchHistoryScreen';
 import BatchDetailScreen from './src/BatchDetailScreen';
+import SignInScreen from './src/SignInScreen';
+import { getToken } from './src/auth';
 import { ErrorBoundary } from './src/ErrorBoundary';
 
 const TEST_LABELS: Record<TestType, string> = {
@@ -31,6 +33,28 @@ type Mode =
 
 export default function App() {
   const [mode, setMode] = useState<Mode>({ screen: 'picker' });
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    getToken().then((token) => setSignedIn(token !== null));
+  }, []);
+
+  if (signedIn === null) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  if (!signedIn) {
+    return (
+      <>
+        <SignInScreen onSignedIn={() => setSignedIn(true)} />
+        <StatusBar style="auto" />
+      </>
+    );
+  }
 
   if (mode.screen === 'picker') {
     return (
@@ -52,6 +76,10 @@ export default function App() {
         <BatchHistoryScreen
           onBack={() => setMode({ screen: 'picker' })}
           onOpenBatch={(batchId) => setMode({ screen: 'batchDetail', batchId })}
+          onLoggedOut={() => {
+            setSignedIn(false);
+            setMode({ screen: 'picker' });
+          }}
         />
         <StatusBar style="auto" />
       </>

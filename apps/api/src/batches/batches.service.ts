@@ -70,16 +70,13 @@ export class BatchesService {
     private readonly baselineService: BaselineService,
   ) {}
 
-  async create(dto: CreateTestBatchDto): Promise<{ id: string }> {
-    const user = await this.prisma.user.upsert({
-      where: { deviceId: dto.deviceId },
-      create: { deviceId: dto.deviceId },
-      update: {},
-    });
-
+  async create(
+    dto: CreateTestBatchDto,
+    userId: string,
+  ): Promise<{ id: string }> {
     const batch = await this.prisma.testBatch.create({
       data: {
-        userId: user.id,
+        userId,
         name: dto.name,
       },
     });
@@ -87,14 +84,9 @@ export class BatchesService {
     return { id: batch.id };
   }
 
-  async findAllForDevice(deviceId: string): Promise<TestBatchSummary[]> {
-    const user = await this.prisma.user.findUnique({ where: { deviceId } });
-    if (!user) {
-      return [];
-    }
-
+  async findAllForUser(userId: string): Promise<TestBatchSummary[]> {
     const batches = await this.prisma.testBatch.findMany({
-      where: { userId: user.id },
+      where: { userId },
       orderBy: { createdAt: 'desc' },
       include: { _count: { select: { sessions: true } } },
     });
@@ -107,38 +99,32 @@ export class BatchesService {
     }));
   }
 
-  async findOneForDevice(
-    id: string,
-    deviceId: string,
-  ): Promise<TestBatchDetail> {
-    let detail = await this.loadDetail(id, deviceId);
+  async findOneForUser(id: string, userId: string): Promise<TestBatchDetail> {
+    let detail = await this.loadDetail(id, userId);
 
     if (detail.sessions.some((s) => s.mlResult === null)) {
       // A background sweep also picks up pending sessions (see MlService),
       // but a user looking at this screen right now shouldn't wait out that
       // interval — compute this batch's pending sessions immediately.
       await this.mlService.computePendingForBatch(id);
-      detail = await this.loadDetail(id, deviceId);
+      detail = await this.loadDetail(id, userId);
     }
 
     if (detail.sessions.some((s) => s.mlResult !== null && s.baseline === null)) {
       await this.baselineService.computePendingForBatch(id);
-      detail = await this.loadDetail(id, deviceId);
+      detail = await this.loadDetail(id, userId);
     }
 
     return detail;
   }
 
-  async explainForDevice(
+  async explainForUser(
     id: string,
-    deviceId: string,
+    userId: string,
   ): Promise<LLMExplanationSummary> {
-    const user = await this.prisma.user.findUnique({ where: { deviceId } });
-    const batch = user
-      ? await this.prisma.testBatch.findUnique({ where: { id } })
-      : null;
+    const batch = await this.prisma.testBatch.findUnique({ where: { id } });
 
-    if (!batch || batch.userId !== user?.id) {
+    if (!batch || batch.userId !== userId) {
       throw new NotFoundException('batch not found');
     }
 
@@ -147,38 +133,34 @@ export class BatchesService {
 
   private async loadDetail(
     id: string,
-    deviceId: string,
+    userId: string,
   ): Promise<TestBatchDetail> {
-    const user = await this.prisma.user.findUnique({ where: { deviceId } });
-
-    const batch = user
-      ? await this.prisma.testBatch.findUnique({
-          where: { id },
+    const batch = await this.prisma.testBatch.findUnique({
+      where: { id },
+      include: {
+        sessions: {
+          orderBy: { startedAt: 'asc' },
           include: {
-            sessions: {
-              orderBy: { startedAt: 'asc' },
+            mlResults: {
+              orderBy: { computedAt: 'desc' },
+              take: 1,
               include: {
-                mlResults: {
+                baselineResults: {
                   orderBy: { computedAt: 'desc' },
                   take: 1,
-                  include: {
-                    baselineResults: {
-                      orderBy: { computedAt: 'desc' },
-                      take: 1,
-                    },
-                  },
                 },
               },
             },
-            explanations: {
-              orderBy: { generatedAt: 'desc' },
-              take: 1,
-            },
           },
-        })
-      : null;
+        },
+        explanations: {
+          orderBy: { generatedAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
 
-    if (!batch || batch.userId !== user?.id) {
+    if (!batch || batch.userId !== userId) {
       throw new NotFoundException('batch not found');
     }
 

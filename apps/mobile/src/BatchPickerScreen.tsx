@@ -8,8 +8,8 @@ import {
   View,
 } from 'react-native';
 import type { TestType } from '@mino/shared-types';
+import { authHeader } from './auth';
 import { API_BASE_URL } from './config';
-import { getOrCreateDeviceId } from './deviceId';
 
 const TESTS: { testType: TestType; label: string }[] = [
   { testType: 'fingerTapping', label: 'Finger Tapping' },
@@ -50,14 +50,13 @@ export default function BatchPickerScreen({ onStart, onViewHistory }: Props) {
     setStarting(true);
     setError(false);
     try {
-      const deviceId = await getOrCreateDeviceId();
       const response = await fetch(`${API_BASE_URL}/batches`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          deviceId,
-          ...(name.trim() ? { name: name.trim() } : {}),
-        }),
+        headers: {
+          'Content-Type': 'application/json',
+          ...(await authHeader()),
+        },
+        body: JSON.stringify(name.trim() ? { name: name.trim() } : {}),
       });
 
       if (!response.ok) {

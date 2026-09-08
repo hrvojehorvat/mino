@@ -94,5 +94,17 @@ This keeps verification proportionate to MVP scope: a real integration test wher
 
 One environment note: `services/llm-explain`'s `pyproject.toml` declares `vllm` as a hard dependency, which pulls in `nvidia-cudnn-frontend` — a package with no macOS x86_64 wheel. `uv run pytest` therefore cannot sync at all on that platform, even for the fast, model-free tests (`test_prompt.py`/`test_guardrail.py`, neither of which imports `vllm`). Verified those two files instead via `PYTHONPATH=. uv run --no-project --with pytest -- python -m pytest ...`, which only installs `pytest` and skips the project's own dependency resolution. This is a pre-existing constraint of developing this service on an Intel Mac, not something introduced here — worth a real fix (e.g. an optional dependency group splitting `vllm` out of the fast test path) if this keeps coming up.
 
+## Phase 6 — Real authentication
+
+**Definition of done:**
+1. `POST /auth/signup` creates a `User` with a hashed password and returns a JWT; a duplicate email is rejected (409); a password under 8 characters is rejected (400).
+2. `POST /auth/login` returns a JWT for correct credentials; wrong password and unregistered email are both rejected (401), without revealing which.
+3. Every route that used to trust a raw `deviceId` (`/batches`, `/sessions`, `/batches/:id/explain`) is now behind `JwtAuthGuard`: no `Authorization` header, a malformed token, or another user's token all correctly fail (401 or 404-by-ownership, never silently returning someone else's data).
+4. `apps/api/test/auth.e2e-spec.ts` covers all of the above; every pre-existing e2e spec (`sessions`, `batches`, `batches-explain`, `baseline`) was converted from a hardcoded `deviceId` to `signupAndAuthenticate()`/`bearer()` (`apps/api/test/support/auth.ts`) and still passes — full suite green (38/38 across 6 files).
+5. Mobile: signed out on fresh launch (no stored token) shows `SignInScreen`; signing up or logging in reaches the existing test-picker flow; every API call from the mobile app sends the bearer token instead of a device ID; logging out returns to `SignInScreen`. Type checks pass for `apps/mobile`.
+6. Manual verification: signed up via the running API, created a batch, logged in again with a fresh token, confirmed the batch was still attached to that account.
+
+**Testing approach:** same split as every prior phase — an e2e spec against the real `mino_test` Postgres carries the auth-flow correctness bar (signup/login/guard edge cases), the existing e2e specs double as regression coverage that the identity-model swap didn't break any authorization check, and a manual pass against the running dev API (`curl`, not just the automated suite) is the final gate. One environment wrinkle surfaced while getting the full suite green: the local `mino_test` database still had pre-auth rows with no `email`/`passwordHash`, which blocked the new migration the same way the dev DB did — reset with explicit user confirmation each time (`prisma migrate reset --force`; Prisma's own AI-agent safety guard requires this confirmation to be threaded through as an env var, on top of the project's own practice of asking before destructive commands).
+
 ## Later phases
 To be filled in as each phase is planned in detail.

@@ -3,11 +3,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from './../src/app.module.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
-
-const deviceId = '22222222-2222-4222-8222-222222222222';
+import { bearer, signupAndAuthenticate } from './support/auth.js';
 
 const sessionPayload = (batchId: string) => ({
-  deviceId,
   batchId,
   testType: 'fingerTapping',
   startedAt: '2026-09-02T22:00:00.000Z',
@@ -23,6 +21,7 @@ const sessionPayload = (batchId: string) => ({
 describe('BatchesController (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let token: string;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -47,6 +46,8 @@ describe('BatchesController (e2e)', () => {
     await prisma.testSession.deleteMany();
     await prisma.testBatch.deleteMany();
     await prisma.user.deleteMany();
+
+    ({ token } = await signupAndAuthenticate(app));
   });
 
   afterEach(async () => {
@@ -56,7 +57,8 @@ describe('BatchesController (e2e)', () => {
   it('creates a batch (POST /batches)', async () => {
     const response = await request(app.getHttpServer())
       .post('/batches')
-      .send({ deviceId, name: 'Morning check-in' })
+      .set(bearer(token))
+      .send({ name: 'Morning check-in' })
       .expect(201);
 
     expect(response.body.id).toEqual(expect.any(String));
@@ -70,7 +72,8 @@ describe('BatchesController (e2e)', () => {
   it('creates a batch without a name', async () => {
     const response = await request(app.getHttpServer())
       .post('/batches')
-      .send({ deviceId })
+      .set(bearer(token))
+      .send({})
       .expect(201);
 
     const batch = await prisma.testBatch.findUnique({
@@ -79,24 +82,31 @@ describe('BatchesController (e2e)', () => {
     expect(batch?.name).toBeNull();
   });
 
-  it('lists batches for a device with their session counts, newest first (GET /batches)', async () => {
+  it('rejects requests with no bearer token (401)', async () => {
+    await request(app.getHttpServer()).post('/batches').send({}).expect(401);
+  });
+
+  it('lists batches for a user with their session counts, newest first (GET /batches)', async () => {
     const firstBatch = await request(app.getHttpServer())
       .post('/batches')
-      .send({ deviceId, name: 'First batch' })
+      .set(bearer(token))
+      .send({ name: 'First batch' })
       .expect(201);
     const secondBatch = await request(app.getHttpServer())
       .post('/batches')
-      .send({ deviceId, name: 'Second batch' })
+      .set(bearer(token))
+      .send({ name: 'Second batch' })
       .expect(201);
 
     await request(app.getHttpServer())
       .post('/sessions')
+      .set(bearer(token))
       .send(sessionPayload(secondBatch.body.id))
       .expect(201);
 
     const response = await request(app.getHttpServer())
       .get('/batches')
-      .query({ deviceId })
+      .set(bearer(token))
       .expect(200);
 
     expect(response.body).toEqual([
@@ -113,10 +123,10 @@ describe('BatchesController (e2e)', () => {
     ]);
   });
 
-  it('returns an empty list for a device with no batches', async () => {
+  it('returns an empty list for a user with no batches', async () => {
     const response = await request(app.getHttpServer())
       .get('/batches')
-      .query({ deviceId })
+      .set(bearer(token))
       .expect(200);
 
     expect(response.body).toEqual([]);
@@ -125,6 +135,7 @@ describe('BatchesController (e2e)', () => {
   it('rejects a session submission whose batchId does not exist (400)', async () => {
     await request(app.getHttpServer())
       .post('/sessions')
+      .set(bearer(token))
       .send(sessionPayload('does-not-exist'))
       .expect(400);
   });
@@ -132,17 +143,19 @@ describe('BatchesController (e2e)', () => {
   it('computes a pending result on demand instead of only relying on the background sweep (GET /batches/:id)', async () => {
     const batch = await request(app.getHttpServer())
       .post('/batches')
-      .send({ deviceId, name: 'Morning check-in' })
+      .set(bearer(token))
+      .send({ name: 'Morning check-in' })
       .expect(201);
 
     const session = await request(app.getHttpServer())
       .post('/sessions')
+      .set(bearer(token))
       .send(sessionPayload(batch.body.id))
       .expect(201);
 
     const response = await request(app.getHttpServer())
       .get(`/batches/${batch.body.id}`)
-      .query({ deviceId })
+      .set(bearer(token))
       .expect(200);
 
     expect(response.body).toMatchObject({
@@ -166,11 +179,13 @@ describe('BatchesController (e2e)', () => {
   it('includes the mlResult once services/ml has computed one (GET /batches/:id)', async () => {
     const batch = await request(app.getHttpServer())
       .post('/batches')
-      .send({ deviceId })
+      .set(bearer(token))
+      .send({})
       .expect(201);
 
     const session = await request(app.getHttpServer())
       .post('/sessions')
+      .set(bearer(token))
       .send(sessionPayload(batch.body.id))
       .expect(201);
 
@@ -185,7 +200,7 @@ describe('BatchesController (e2e)', () => {
 
     const response = await request(app.getHttpServer())
       .get(`/batches/${batch.body.id}`)
-      .query({ deviceId })
+      .set(bearer(token))
       .expect(200);
 
     expect(response.body.sessions[0].mlResult).toMatchObject({
@@ -198,19 +213,21 @@ describe('BatchesController (e2e)', () => {
   it('returns 404 for an unknown batch id (GET /batches/:id)', async () => {
     await request(app.getHttpServer())
       .get('/batches/does-not-exist')
-      .query({ deviceId })
+      .set(bearer(token))
       .expect(404);
   });
 
-  it('returns 404 for a batch belonging to a different device (GET /batches/:id)', async () => {
+  it('returns 404 for a batch belonging to a different user (GET /batches/:id)', async () => {
     const batch = await request(app.getHttpServer())
       .post('/batches')
-      .send({ deviceId })
+      .set(bearer(token))
+      .send({})
       .expect(201);
 
+    const other = await signupAndAuthenticate(app);
     await request(app.getHttpServer())
       .get(`/batches/${batch.body.id}`)
-      .query({ deviceId: '33333333-3333-4333-8333-333333333333' })
+      .set(bearer(other.token))
       .expect(404);
   });
 });

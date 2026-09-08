@@ -4,12 +4,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from './../src/app.module.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
+import { bearer, signupAndAuthenticate } from './support/auth.js';
 import {
   MODEL_ID as BASELINE_MODEL_ID,
   MODEL_VERSION as BASELINE_MODEL_VERSION,
 } from './../src/baseline/baseline.constants.js';
-
-const deviceId = '44444444-4444-4444-8444-444444444444';
 
 // services/llm-explain needs a GPU/Modal deployment to run for real, so
 // these tests stand up a stub HTTP server on the same port LlmClientService
@@ -52,6 +51,7 @@ afterAll(async () => {
 describe('BatchesController — explain (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let token: string;
 
   beforeEach(async () => {
     explainRequestCount = 0;
@@ -81,6 +81,8 @@ describe('BatchesController — explain (e2e)', () => {
     await prisma.testSession.deleteMany();
     await prisma.testBatch.deleteMany();
     await prisma.user.deleteMany();
+
+    ({ token } = await signupAndAuthenticate(app));
   });
 
   afterEach(async () => {
@@ -90,13 +92,14 @@ describe('BatchesController — explain (e2e)', () => {
   const createComputedBatch = async () => {
     const batch = await request(app.getHttpServer())
       .post('/batches')
-      .send({ deviceId, name: 'Morning check-in' })
+      .set(bearer(token))
+      .send({ name: 'Morning check-in' })
       .expect(201);
 
     const session = await request(app.getHttpServer())
       .post('/sessions')
+      .set(bearer(token))
       .send({
-        deviceId,
         batchId: batch.body.id,
         testType: 'fingerTapping',
         startedAt: '2026-09-05T22:00:00.000Z',
@@ -127,7 +130,7 @@ describe('BatchesController — explain (e2e)', () => {
 
     const response = await request(app.getHttpServer())
       .post(`/batches/${batchId}/explain`)
-      .send({ deviceId })
+      .set(bearer(token))
       .expect(201);
 
     expect(response.body).toMatchObject({
@@ -137,7 +140,7 @@ describe('BatchesController — explain (e2e)', () => {
 
     const detail = await request(app.getHttpServer())
       .get(`/batches/${batchId}`)
-      .query({ deviceId })
+      .set(bearer(token))
       .expect(200);
     expect(detail.body.llmExplanation).toMatchObject({
       text: 'Your results look steady overall.',
@@ -150,12 +153,12 @@ describe('BatchesController — explain (e2e)', () => {
 
     await request(app.getHttpServer())
       .post(`/batches/${batchId}/explain`)
-      .send({ deviceId })
+      .set(bearer(token))
       .expect(422);
 
     const detail = await request(app.getHttpServer())
       .get(`/batches/${batchId}`)
-      .query({ deviceId })
+      .set(bearer(token))
       .expect(200);
     expect(detail.body.llmExplanation).toBeNull();
   });
@@ -163,13 +166,14 @@ describe('BatchesController — explain (e2e)', () => {
   it('rejects a batch that still has sessions with no ML result', async () => {
     const batch = await request(app.getHttpServer())
       .post('/batches')
-      .send({ deviceId })
+      .set(bearer(token))
+      .send({})
       .expect(201);
 
     await request(app.getHttpServer())
       .post('/sessions')
+      .set(bearer(token))
       .send({
-        deviceId,
         batchId: batch.body.id,
         testType: 'fingerTapping',
         startedAt: '2026-09-05T22:00:00.000Z',
@@ -185,7 +189,7 @@ describe('BatchesController — explain (e2e)', () => {
 
     await request(app.getHttpServer())
       .post(`/batches/${batch.body.id}/explain`)
-      .send({ deviceId })
+      .set(bearer(token))
       .expect(422);
 
     expect(explainRequestCount).toBe(0);
@@ -196,11 +200,11 @@ describe('BatchesController — explain (e2e)', () => {
 
     await request(app.getHttpServer())
       .post(`/batches/${batchId}/explain`)
-      .send({ deviceId })
+      .set(bearer(token))
       .expect(201);
     await request(app.getHttpServer())
       .post(`/batches/${batchId}/explain`)
-      .send({ deviceId })
+      .set(bearer(token))
       .expect(201);
 
     expect(explainRequestCount).toBe(1);
@@ -234,7 +238,7 @@ describe('BatchesController — explain (e2e)', () => {
 
     await request(app.getHttpServer())
       .post(`/batches/${batchId}/explain`)
-      .send({ deviceId })
+      .set(bearer(token))
       .expect(201);
 
     const body = lastExplainRequestBody as { sessions: Array<{ baseline: unknown }> };
@@ -253,19 +257,20 @@ describe('BatchesController — explain (e2e)', () => {
 
     await request(app.getHttpServer())
       .post(`/batches/${batchId}/explain`)
-      .send({ deviceId })
+      .set(bearer(token))
       .expect(201);
 
     const body = lastExplainRequestBody as { sessions: Array<{ baseline: unknown }> };
     expect(body.sessions[0].baseline).toBeNull();
   });
 
-  it('returns 404 for a batch belonging to a different device', async () => {
+  it('returns 404 for a batch belonging to a different user', async () => {
     const batchId = await createComputedBatch();
 
+    const other = await signupAndAuthenticate(app);
     await request(app.getHttpServer())
       .post(`/batches/${batchId}/explain`)
-      .send({ deviceId: '55555555-5555-4555-8555-555555555555' })
+      .set(bearer(other.token))
       .expect(404);
   });
 });

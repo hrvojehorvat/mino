@@ -6,7 +6,6 @@ import {
   IsISO8601,
   IsOptional,
   IsString,
-  IsUUID,
   ValidateNested,
 } from 'class-validator';
 import type { TestType } from '@mino/shared-types';
@@ -16,9 +15,6 @@ import { RawTouchEventDto } from './raw-touch-event.dto.js';
 import { SensorSampleDto } from './sensor-sample.dto.js';
 
 export class CreateTestSessionDto {
-  @IsUUID('4')
-  deviceId!: string;
-
   @IsString()
   batchId!: string;
 

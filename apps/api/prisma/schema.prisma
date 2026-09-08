@@ -32,11 +32,13 @@ enum SessionStatus {
 }
 
 model User {
-  id        String        @id @default(cuid())
-  deviceId  String        @unique
-  createdAt DateTime      @default(now())
-  sessions  TestSession[]
-  batches   TestBatch[]
+  id           String        @id @default(cuid())
+  email        String        @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime      @default(now())
+  sessions     TestSession[]
+  batches      TestBatch[]
 }
 
 // A named, dated set of tests taken back-to-back in one run — chosen by the

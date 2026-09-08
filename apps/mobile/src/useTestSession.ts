@@ -8,8 +8,8 @@ import type {
   TestType,
   TouchEventType,
 } from '@mino/shared-types';
+import { authHeader } from './auth';
 import { API_BASE_URL, CLIENT_APP_VERSION } from './config';
-import { getOrCreateDeviceId } from './deviceId';
 
 export type TestSessionState =
   | 'idle'
@@ -107,9 +107,7 @@ export function useTestSession({
     const endedAt = new Date().toISOString();
 
     try {
-      const deviceId = await getOrCreateDeviceId();
       const payload: TestSessionSubmission = {
-        deviceId,
         batchId,
         testType,
         startedAt: startedAtRef.current,
@@ -129,7 +127,10 @@ export function useTestSession({
 
       const response = await fetch(`${API_BASE_URL}/sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(await authHeader()),
+        },
         body: JSON.stringify(payload),
       });
 

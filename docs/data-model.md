@@ -5,7 +5,7 @@ Guiding rule (from CLAUDE.md): preserve raw data whenever practical, and keep it
 ## Core entities
 
 ### User
-Minimal for MVP: `id`, `deviceId`, `createdAt`. No real auth for MVP — resolved decision (see Phase 1 plan): a client-generated UUID persisted on-device is the identity, upserted into `User` on first submission. Real authentication is deferred until multi-user/production need arises.
+Real accounts: `id`, `email` (unique), `passwordHash`, `name`, `createdAt`. Identity is proven with a JWT (`Authorization: Bearer <token>`) issued by `POST /auth/signup` or `POST /auth/login`, not a client-generated device ID — that MVP shortcut (a UUID persisted on-device, upserted into `User` on first submission) was replaced once the app moved toward a real multi-user deployment. Passwords are hashed with `bcryptjs` (pure JS — no native build step, since this code is containerized for Azure).
 
 ### TestSession
 One row per completed (or attempted) test run.

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
+import { AuthModule } from './auth/auth.module.js';
 import { BatchesModule } from './batches/batches.module.js';
 import { LlmModule } from './llm/llm.module.js';
 import { MlModule } from './ml/ml.module.js';
@@ -12,6 +13,7 @@ import { SessionsModule } from './sessions/sessions.module.js';
   imports: [
     ScheduleModule.forRoot(),
     PrismaModule,
+    AuthModule,
     MlModule,
     LlmModule,
     BatchesModule,

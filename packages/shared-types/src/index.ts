@@ -1,3 +1,19 @@
+export interface SignupRequest {
+  name: string;
+  email: string;
+  password: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: { id: string; name: string; email: string };
+}
+
 export type TestType =
   | "fingerTapping"
   | "reactionTime"
@@ -52,7 +68,6 @@ export interface DeviceMetadata {
 }
 
 export interface TestSessionSubmission {
-  deviceId: string;
   // Every session belongs to a batch (see TestBatch) — even a batch of one
   // test. Created up front via POST /batches before the first session in it
   // is submitted.
@@ -82,7 +97,6 @@ export interface TestSessionSubmissionResponse {
 // A named, dated set of tests taken back-to-back in one run — see
 // TestSession.batchId and apps/mobile's batch picker screen.
 export interface TestBatchSubmission {
-  deviceId: string;
   name?: string;
 }
 
