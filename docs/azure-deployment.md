@@ -229,6 +229,92 @@ Goal: `apps/mobile` exported as a static web build, hosted on Azure Static Web A
   ```
   Live at `https://green-dune-0665e610f.5.azurestaticapps.net` — verified by Claude with `curl` (`200`, correct `index.html` with `react-native-web`'s reset styles and `#root` mount point).
 
+## Pausing / resuming (cost control)
+
+Everything in this deployment bills continuously by default: the Postgres server runs 24/7 regardless of use, and all three Container Apps were created with `--min-replicas 1` (always at least one instance up). Use these when not actively using/testing the app, instead of deleting anything.
+
+**Pause everything except the web frontend** (Postgres stopped, all three backend containers scaled to zero — nothing to redeploy, just restart/rescale when resuming):
+```bash
+az postgres flexible-server stop --name mino-db-hrvoje --resource-group mino-rg && \
+az containerapp update --name mino-api --resource-group mino-rg --min-replicas 0 --max-replicas 1 && \
+az containerapp update --name mino-ml --resource-group mino-rg --min-replicas 0 --max-replicas 1 && \
+az containerapp update --name mino-llm-explain --resource-group mino-rg --min-replicas 0 --max-replicas 1
+```
+
+**Pause everything, web included** (same as above, plus deletes the Static Web App — note this one is *not* symmetric with the resume below: Static Web Apps has no stop/start, so bringing `mino-web` back means re-running Step 6's create/secrets/deploy commands again, not just a rescale. Its Free tier costs $0 either way, so this only matters if you want it not publicly reachable, not for cost):
+```bash
+az postgres flexible-server stop --name mino-db-hrvoje --resource-group mino-rg && \
+az containerapp update --name mino-api --resource-group mino-rg --min-replicas 0 --max-replicas 1 && \
+az containerapp update --name mino-ml --resource-group mino-rg --min-replicas 0 --max-replicas 1 && \
+az containerapp update --name mino-llm-explain --resource-group mino-rg --min-replicas 0 --max-replicas 1 && \
+az staticwebapp delete --name mino-web --resource-group mino-rg --yes
+```
+
+**Resume** (Postgres + all three containers back to a normal always-on state; note Azure also auto-restarts a stopped Postgres server on its own after 7 days regardless of this command):
+```bash
+az postgres flexible-server start --name mino-db-hrvoje --resource-group mino-rg && \
+az containerapp update --name mino-api --resource-group mino-rg --min-replicas 1 --max-replicas 1 && \
+az containerapp update --name mino-ml --resource-group mino-rg --min-replicas 1 --max-replicas 1 && \
+az containerapp update --name mino-llm-explain --resource-group mino-rg --min-replicas 1 --max-replicas 1
+```
+If `mino-web` was deleted, re-run Step 6's create/secrets/deploy/show sequence to bring it back (the local `apps/mobile/dist/` build doesn't need to be rebuilt unless the API URL or app code changed).
+
+**Note on `flexible-server stop`:** Azure hard-codes a 7-day auto-restart on a stopped Postgres Flexible Server — there's no flag to disable it, so a `stop` left alone longer than a week will silently start billing again on its own. Fine for short pauses (just re-run `stop` every ~6 days to reset the clock); for anything longer, delete the server entirely instead — see below.
+
+### Long pause: back up and delete the database entirely
+
+For a pause longer than a week, this is the only way to guarantee zero cost with no surprise restart — no server at all means no storage or compute billing.
+
+**Back up, then delete:**
+```bash
+pg_dump 'postgresql://minoadmin:<PASSWORD>@mino-db-hrvoje.postgres.database.azure.com:5432/mino?sslmode=require' -f mino-backup.sql
+az postgres flexible-server delete --name mino-db-hrvoje --resource-group mino-rg --yes
+```
+`pg_dump` writes every table's data and schema to a local file — keep `mino-backup.sql` somewhere safe (it's not tracked in git; it contains real user data once there's any). The `delete` is permanent: the server, all its data, and its firewall rules are gone for good, which is exactly the point here — this trades convenience for guaranteed zero billing.
+
+**Recreate and restore later** (same server-creation commands as Step 2, then load the backup back in):
+```bash
+az postgres flexible-server create \
+  --resource-group mino-rg \
+  --name mino-db-hrvoje \
+  --location northeurope \
+  --admin-user minoadmin \
+  --admin-password '<NEW_PASSWORD>' \
+  --sku-name Standard_B1ms \
+  --tier Burstable \
+  --storage-size 32 \
+  --version 16 \
+  --public-access <MY_IP> \
+  --yes
+
+az postgres flexible-server firewall-rule create \
+  --resource-group mino-rg \
+  --server-name mino-db-hrvoje \
+  --name AllowAzureServices \
+  --start-ip-address 0.0.0.0 \
+  --end-ip-address 0.0.0.0
+
+psql 'postgresql://minoadmin:<NEW_PASSWORD>@mino-db-hrvoje.postgres.database.azure.com:5432/mino?sslmode=require' -f mino-backup.sql
+```
+The two firewall rules (your own IP + `AllowAzureServices`) need re-adding since they belonged to the deleted server, not the resource group. If `mino-api` is still running (or resumed) with the old `DATABASE_URL` secret pointing at this same server name, no redeploy is needed — the hostname is identical once the new server exists again; only the password changes if you pick a new one, which means updating the `db-url` secret on `mino-api`:
+```bash
+az containerapp secret set --name mino-api --resource-group mino-rg --secrets db-url='postgresql://minoadmin:<NEW_PASSWORD>@mino-db-hrvoje.postgres.database.azure.com:5432/mino?sslmode=require'
+```
+
+### Full teardown: delete everything
+
+Deletes the whole `mino-rg` resource group in one shot — the Postgres server (and all its data), the Container Apps environment and all three containers, and the Static Web App. **Irreversible** — this is not a pause, there is nothing left to resume; rebuilding means redoing Steps 2-6 from scratch (the GHCR images from Step 4 survive, since they live on GitHub, not in this resource group, so at least the container images don't need rebuilding):
+
+```bash
+az group delete --name mino-rg --yes --no-wait
+```
+
+`--no-wait` returns immediately instead of blocking the terminal for the several minutes the actual deletion takes. Check progress:
+```bash
+az group exists --name mino-rg
+```
+Returns `true` while deleting, `false` once fully gone. **Portal:** the resource groups list shows `mino-rg` with a "Deleting" status banner, then it disappears entirely.
+
 ## Step 7 — Test it
 **Status:** not started
 
