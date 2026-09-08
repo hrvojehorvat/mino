@@ -103,3 +103,16 @@ Status legend: not started / in progress / done. Update the status line for a ph
 - [x] Manual verification: signed up via the running API, created a batch, logged in again with a fresh token, confirmed the batch was still there under that account.
 - Local dev and test Postgres databases were reset (`prisma migrate reset --force`, explicit user consent each time — Prisma's own AI-agent safety guard requires it) rather than migrating old deviceId-only rows, since none of that data was worth preserving.
 - Not in this slice (deliberately deferred — not needed for a personal wellness MVP): password reset, email verification, OAuth/social login, refresh tokens.
+
+## Phase 7 — Azure deployment
+**Status:** in progress
+
+- [x] Resource group `mino-rg` created (`westeurope`).
+- [x] Postgres server on Azure (`mino-db-hrvoje`, `northeurope`) + all 12 existing migrations run against it — see `azure-deployment.md` for the exact command log, including two false starts along the way: `westeurope` was rejecting new PostgreSQL Flexible Server customers, and a one-time `Microsoft.DBforPostgreSQL` provider registration was needed first.
+- [x] Dockerfiles for `apps/api`, `services/ml`, `services/llm-explain`'s `dev_stub.py` — all three built and smoke-tested locally. Along the way: added `gunicorn` to `services/ml` (Flask's dev server isn't production-safe), and an explicit `openssl` install in `apps/api`'s image (Prisma's engine can't detect libssl on `node:20-slim` otherwise).
+- [ ] Images pushed to GHCR.
+- [ ] Azure Container Apps environment running all three (only `apps/api` public).
+- [ ] `apps/mobile` static web export on Azure Static Web Apps, pointed at the live API.
+- [ ] End-to-end test against the deployed stack.
+- Full step-by-step command log kept in `azure-deployment.md`, not here — this entry just tracks phase status like every other roadmap phase.
+- Workflow note: for this phase, the user runs every `az`/`gh` provisioning command themselves rather than Claude executing it via Bash — see `azure-deployment.md`'s header note.
