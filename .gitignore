@@ -54,3 +54,6 @@ coverage/
 # Misc
 *.tsbuildinfo
 .turbo/
+
+# Claude Code instructions (local only)
+CLAUDE.md
